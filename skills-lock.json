@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "skills": {
+    "automate": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "1123cd1d19602e61143fc8acd483e36a916afd458a6bda74dfaf17352af92695"
+    },
+    "babysit": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "a18ec8d86ee441c71107ee574bbb1d8c9e345199e0c6a4e3b54ea2cd917c0226"
+    },
+    "canvas": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "476dbbdd878b76f7c96d46877dcd1a3d861e4903933061147c7fa0d90e63b9f9"
+    },
+    "create-hook": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "65b6da3c28b0aaf1d7beb4b545dcf319ed6c6a2c3777a8443b0f4d84883de40a"
+    },
+    "create-rule": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "f7e460828813a8b52c4f9aaeb45cdaaf3c24871a3c627673b9a32a2bda87771c"
+    },
+    "create-skill": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "8f566f4c738afc141d95762e1d8c58569443ec90da89e50f984c50f3b5c48c76"
+    },
+    "create-subagent": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "b85cc0221e7fa016286821b2c287cf038e7e6ecb2e478fefd2e26ac501b7cf84"
+    },
+    "find-release": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "228bb0dd257cec8000ae3678a5d91af9b3948046874dea35ef1e3203cd3dce09"
+    },
+    "loop": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "8bedd4b296d98a5132d692d2f8634efee5e3992c77d2fa99079e770654f81e0e"
+    },
+    "migrate-to-builds": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "16cc6e12634fb4ca7b96960531371a7f758b07ba60558030ba0a70e12c296d9c"
+    },
+    "migrate-to-skills": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "411aef2b8c9c195af496887e3b2282452188e044ad5f10ca10cd00334e71bb59"
+    },
+    "onboard": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "4a89a07b9b6f252adee46214b3666e22f9a3f9858675599c8722a850dab9cffb"
+    },
+    "review": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "504c79bcda0c21480af9188eb302891e78f5b6323c7ce50412790063972930b0"
+    },
+    "review-bugbot": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "33c10fda541db01ab563d43004dc43d222b143285bd7201702d1fb60ba80f0dc"
+    },
+    "review-security": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "56eda27c66d4bc6fa9edd2070fa7b9f64f99b7317d5208584eca24d3630bedbf"
+    },
+    "sdk": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "f748f73843ef7c703472d3244403a86d1293ccebb90479fd38c495f7aa45f32b"
+    },
+    "shell": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "b0b84f212164ac3bdb4795ec0739030c7acfcc3deae647ffdfe2d6051fcc9aef"
+    },
+    "split-to-prs": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "78c5c1c66837ae13906a5032090f9e157291f0d6f5fcee2dcb76c7caba256e42"
+    },
+    "statusline": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "8f4646f95fc6f744512392747186b0d403405949ee50bf15cf8dfc2ce4095bbc"
+    },
+    "update-cli-config": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "b56942442dd44ab20716b164af3363d77076eec1c1d0c8af2c75e6aa521d1557"
+    },
+    "update-cursor-settings": {
+      "source": "../../../../../../..",
+      "sourceType": "local",
+      "computedHash": "c2e627122dbf7569faca8d4a98f0270b9f4e64a9f19696bacac713f7eae3c852"
+    }
+  }
+}
