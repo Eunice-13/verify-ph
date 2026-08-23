@@ -1,4 +1,4 @@
-# VerifyPH 🇵🇭
+# VerifyPH
 
 **VerifyPH** is an open-source, evidence-based news aggregation and claim-verification platform designed to combat misinformation in the Philippines.
 
@@ -6,21 +6,21 @@ By aggregating real-time updates from trusted Philippine media organizations and
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
-* **📰 Curated News Feed:** Automatically aggregates, normalizes, and dedupes real-time articles from verified Philippine news outlets into a single, clean interface.
-* **🔍 Evidence-Based Claim Checker:** Allows users to paste claims from social media (Facebook, TikTok, X, Messenger) and cross-reference them against verified news database entries.
-* **🎯 Objective Verdict System:** Organizes evidence into 5 fixed categories without acting as an arbitrary "truth authority":
+* **Curated News Feed:** Automatically aggregates, normalizes, and dedupes real-time articles from verified Philippine news outlets into a single, clean interface.
+* **Evidence-Based Claim Checker:** Allows users to paste claims from social media (Facebook, TikTok, X, Messenger) and cross-reference them against verified news database entries.
+* **Objective Verdict System:** Organizes evidence into 5 fixed categories without acting as an arbitrary "truth authority":
   * `Officially Confirmed`
   * `Corroborated`
   * `Developing`
   * `Insufficient Evidence`
   * `Contradicted`
-* **🔗 Direct Source Attribution:** Every claim result and feed item links directly back to original publisher sources ("Read Original").
+* **Direct Source Attribution:** Every claim result and feed item links directly back to original publisher sources ("Read Original").
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 * **Frontend / Framework:** [Next.js](https://nextjs.org/) (App Router) & [Tailwind CSS](https://tailwindcss.com/)
 * **Backend & Database:** [Supabase](https://supabase.com/) (PostgreSQL & Vector Search)
@@ -30,7 +30,7 @@ By aggregating real-time updates from trusted Philippine media organizations and
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -67,7 +67,7 @@ supabase/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -116,7 +116,7 @@ Ensure you have the following installed locally:
 
 ---
 
-## ⏰ Background News Ingestion (Cron Setup)
+## Background News Ingestion (Cron Setup)
 
 The news feed updates automatically by triggering the `/api/cron/fetch-news` endpoint.
 
@@ -125,7 +125,7 @@ The news feed updates automatically by triggering the `/api/cron/fetch-news` end
 
 ---
 
-## 🛡️ Principles & Ethics
+## Principles & Ethics
 
 VerifyPH adheres strictly to **transparent evidence presentation**:
 1. **No Unilateral Truth Claims:** The AI does not declare statements as simply "Real" or "Fake". It categorizes evidence retrieved directly from verified sources.
@@ -134,10 +134,10 @@ VerifyPH adheres strictly to **transparent evidence presentation**:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
