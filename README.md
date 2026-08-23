@@ -1,4 +1,4 @@
-# VerifyPH 🇵🇭
+# VerifyPH
 
 **VerifyPH** is an open-source, evidence-based news aggregation and claim-verification platform designed to combat misinformation in the Philippines.
 
