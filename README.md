@@ -36,23 +36,33 @@ By aggregating real-time updates from trusted Philippine media organizations and
 src/
 ├── app/
 │   ├── api/
-│   │   ├── cron/
-│   │   │   └── fetch-news/route.ts   # Scheduled RSS ingestion endpoint
-│   │   └── claim-checker/route.ts    # Claim verification endpoint
-│   ├── feed/page.tsx                 # News feed page
+│   │   ├── articles/route.ts         # Query articles for the feed
+│   │   ├── claim-checker/route.ts    # Claim verification endpoint
+│   │   └── cron/
+│   │       └── fetch-news/route.ts   # Scheduled RSS ingestion endpoint
 │   ├── claim-check/page.tsx          # Claim checker page
+│   ├── feed/page.tsx                 # News feed page
+│   ├── globals.css                   # Global styles (Tailwind)
 │   ├── layout.tsx                    # Root layout
-│   └── page.tsx                      # Home page
+│   └── page.tsx                      # Home / landing page
 ├── components/
-│   ├── ui/                           # Shared UI primitives
+│   ├── claim/                        # Claim-checker-specific components
 │   ├── feed/                         # Feed-specific components
-│   └── claim/                        # Claim-checker-specific components
+│   ├── layout/                       # Shared layout (Navbar, Footer)
+│   └── ui/                           # Shared UI primitives
+├── constants/
+│   └── index.ts                      # Verdict categories & fixed labels
 ├── lib/
-│   ├── supabase.ts                   # Supabase client setup
 │   ├── gemini.ts                     # Gemini API client/helpers
+│   ├── rss.ts                        # RSS feed fetching & parsing
+│   ├── sources.ts                    # Trusted PH news source definitions
+│   ├── supabase.ts                   # Supabase client setup
 │   └── utils.ts                      # Shared utilities
 └── types/
     └── index.ts                      # Shared TypeScript types
+
+supabase/
+└── migrations/                       # SQL migration files for DB schema
 ```
 
 ---
@@ -131,5 +141,3 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-=======
-# verify-ph
