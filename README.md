@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # VerifyPH 🇵🇭
 
 **VerifyPH** is an open-source, evidence-based news aggregation and claim-verification platform designed to combat misinformation in the Philippines.
@@ -134,4 +133,3 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 This project is licensed under the [MIT License](LICENSE).
 =======
 # verify-ph
->>>>>>> adb46e9cf8b0025a1a29cd4b5b4e1c3847c3bbbd
