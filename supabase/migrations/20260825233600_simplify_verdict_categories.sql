@@ -14,11 +14,11 @@
 -- Existing rows using a removed label are remapped to 'Verified' (closest
 -- semantic equivalent — both meant "supported by evidence").
 
+alter table public.claims drop constraint claims_verdict_check;
+
 update public.claims
 set verdict = 'Verified'
 where verdict in ('Officially Confirmed', 'Corroborated', 'Developing');
-
-alter table public.claims drop constraint claims_verdict_check;
 
 alter table public.claims add constraint claims_verdict_check
   check (
