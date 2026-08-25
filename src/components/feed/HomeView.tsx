@@ -1,0 +1,72 @@
+import { CATEGORIES } from "@/types";
+import { getFeaturedArticle, getVerifiedArticles } from "@/lib/mockNews";
+import ArticleCard from "@/components/feed/ArticleCard";
+import ArticleSideCard from "@/components/feed/ArticleSideCard";
+import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
+import CategoryRow from "@/components/feed/CategoryRow";
+import ClaimStats from "@/components/feed/ClaimStats";
+
+/**
+ * Homepage view — mixed-category hero (2 small left + 1 large center + 3
+ * side right), followed by a stacked row per category in CATEGORIES order.
+ */
+export default function HomeView() {
+  const featured = getFeaturedArticle();
+  const verified = getVerifiedArticles(null);
+
+  // Build a pool that excludes the hero article, then take 2 for the left
+  // column and 3 for the right column — mixed across categories.
+  const pool = verified.filter((a) => a.id !== featured?.id);
+  const leftArticles = pool.slice(0, 2);
+  const rightArticles = pool.slice(2, 5);
+
+  return (
+    <>
+      <section className="max-w-6xl mx-auto px-6 py-10">
+        <h1 className="font-serif font-bold text-3xl md:text-4xl text-neutral-900 mb-8 text-center">
+          Today&rsquo;s Verified Stories from the Philippines
+        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="md:col-span-1 grid grid-cols-1 gap-6">
+            {Array.from({ length: 2 }, (_, i) =>
+              leftArticles[i] ? (
+                <ArticleCard
+                  key={leftArticles[i].id}
+                  article={leftArticles[i]}
+                  imgHeightClass="h-40 md:h-44"
+                  titleSizeClass="text-sm"
+                />
+              ) : (
+                <EmptyCardSkeleton key={`left-empty-${i}`} heightClass="h-40 md:h-44" />
+              )
+            )}
+          </div>
+          <div className="md:col-span-2">
+            {featured ? (
+              <ArticleCard
+                article={featured}
+                imgHeightClass="h-72 md:h-[26rem]"
+                titleSizeClass="text-xl md:text-2xl"
+              />
+            ) : (
+              <EmptyCardSkeleton heightClass="h-72 md:h-[26rem]" />
+            )}
+          </div>
+          <div className="md:col-span-1 flex flex-col gap-5">
+            {rightArticles.map((article) => (
+              <ArticleSideCard key={article.id} article={article} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {CATEGORIES.map((category) => (
+        <CategoryRow key={category} category={category} count={4} />
+      ))}
+
+      <ClaimStats />
+
+      <div id="claim-bar-spacer" className="h-28" />
+    </>
+  );
+}
