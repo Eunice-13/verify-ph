@@ -35,9 +35,7 @@ Receive user claim
 
 **Fixed verdicts only:**
 
-Officially Confirmed  
-Corroborated  
-Developing  
+Verified  
 Insufficient Evidence  
 Contradicted
 
