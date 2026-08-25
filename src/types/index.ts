@@ -1,65 +1,60 @@
-// Shared TypeScript types and interfaces, mirrored from the Supabase schema
-// (see /supabase/migrations and "dbms context.md").
+// Shared TypeScript types and interfaces.
 
-import type { VerdictCategory } from "@/constants";
+/** The 5 fixed news categories used across the feed. */
+export const CATEGORIES = [
+  "NEWS & POLITICS",
+  "ECONOMY",
+  "HEALTH & SAFETY",
+  "LIFESTYLE",
+  "GENERAL",
+] as const;
 
-export type ArticleCategory =
-  | "News & Politics"
-  | "Economy"
-  | "Health & Safety"
-  | "Lifestyle"
-  | "General";
+export type Category = (typeof CATEGORIES)[number];
 
+/**
+ * Publication status of a news item. Every item rendered in the news UI
+ * MUST have status "VERIFIED" — any other status (e.g. "PENDING") exists
+ * only to prove the filter excludes it and is never rendered.
+ */
+export type ArticleStatus = "VERIFIED" | "PENDING";
+
+/**
+ * A single news article.
+ *
+ * NOTE ON PLACEHOLDERS: sourceUrl / providerName / featured are placeholder
+ * fields only. Once the real backend/scraper is connected, these should be
+ * populated with the actual article URL, the actual publisher name, and an
+ * editorially-flagged "most relevant today" boolean.
+ */
 export interface Article {
-  id: string;
+  id: number;
+  category: Category;
   title: string;
-  summary: string | null;
-  source_url: string;
-  source_name: string;
-  published_at: string;
-  created_at: string;
-  category: ArticleCategory;
-  image_url: string | null;
+  excerpt: string;
+  body: string;
+  date: string;
+  status: ArticleStatus;
+  featured?: boolean;
+  sourceUrl?: string;
+  providerName?: string;
 }
 
-export type ClaimStatus = "pending" | "completed" | "failed";
+/** Possible verdict states returned by the (placeholder) Claim Checker. */
+export type ClaimVerdictStatus = "VERIFIED" | "CONTRADICTED" | "INSUFFICIENT";
 
-/** A single evidence entry recorded in claims.sources_used (jsonb). */
-export interface SourceUsed {
-  article_id: string;
-  title: string;
-  source_name: string;
-  source_url: string;
-  published_at: string;
-  relevance?: string;
+export interface ClaimVerdict {
+  status: ClaimVerdictStatus;
+  badgeClass: string;
+  label: string;
 }
 
-export interface Claim {
-  id: string;
-  user_text: string;
-  verdict: VerdictCategory | null;
-  ai_explanation: string | null;
-  sources_used: SourceUsed[];
-  created_at: string;
-  status: ClaimStatus;
-  confidence: number | null;
-  processed_at: string | null;
-}
+// Verdict categories — fixed labels used by the Claim Checker.
+export const VERDICT_CATEGORIES = [
+  "Officially Confirmed",
+  "Corroborated",
+  "Developing",
+  "Insufficient Evidence",
+  "Contradicted",
+] as const;
 
-/** Structured output requested from Gemini for a single claim-check run. */
-export interface GeminiVerdictResult {
-  verdict: VerdictCategory;
-  ai_explanation: string;
-  confidence: number;
-  sources_used: SourceUsed[];
-}
-
-/** Request body accepted by POST /api/claim-checker. */
-export interface ClaimCheckerRequest {
-  claim: string;
-}
-
-/** Response body returned by POST /api/claim-checker. */
-export interface ClaimCheckerResponse {
-  claim: Claim;
-}
+export type VerdictCategory = (typeof VERDICT_CATEGORIES)[number];

@@ -1,67 +1,26 @@
-// Supabase client setup.
-//
-// - `getSupabaseBrowser()`: safe to use in Client Components. Uses the public
-//   anon key, subject to Row Level Security (RLS) policies.
-// - `supabaseServer()`: for Route Handlers / Server Components only. Uses the
-//   service role key, which bypasses RLS — never import this in client code.
-
-import { createBrowserClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function requiredServerEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") {
+  const value = process.env[name]?.trim();
 
-let browserClient: ReturnType<typeof createBrowserClient> | null = null;
-
-/**
- * Browser/client-side Supabase client. Respects RLS policies.
- * Lazily instantiated so that importing this module (e.g. from a Route
- * Handler bundle during build-time page data collection) does not throw
- * when public env vars are not yet configured.
- */
-export function getSupabaseBrowser() {
-  if (browserClient) return browserClient;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."
-    );
+  if (!value) {
+    throw new Error(`${name} is missing from .env.local`);
   }
 
-  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
-  return browserClient;
+  return value;
 }
 
-let serviceClient: SupabaseClient | null = null;
-
-/**
- * Server-only Supabase client using the service role key.
- * Bypasses RLS — only call this from Route Handlers, Server Actions, or
- * other server-side code. Never expose the service role key to the client.
- */
-export function supabaseServer(): SupabaseClient {
-  if (typeof window !== "undefined") {
-    throw new Error(
-      "supabaseServer() must not be called from client-side code."
-    );
-  }
-
-  if (serviceClient) return serviceClient;
-
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables."
-    );
-  }
-
-  serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+// This client is for server routes only. Never import it into a browser
+// component or expose SUPABASE_SERVICE_ROLE_KEY with a NEXT_PUBLIC_ prefix.
+export function createSupabaseServiceClient(): SupabaseClient {
+  return createClient(
+    requiredServerEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    requiredServerEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
-  });
-
-  return serviceClient;
+  );
 }
