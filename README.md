@@ -10,10 +10,8 @@ By aggregating real-time updates from trusted Philippine media organizations and
 
 * **Curated News Feed:** Automatically aggregates, normalizes, and dedupes real-time articles from verified Philippine news outlets into a single, clean interface.
 * **Evidence-Based Claim Checker:** Allows users to paste claims from social media (Facebook, TikTok, X, Messenger) and cross-reference them against verified news database entries.
-* **Objective Verdict System:** Organizes evidence into 5 fixed categories without acting as an arbitrary "truth authority":
-  * `Officially Confirmed`
-  * `Corroborated`
-  * `Developing`
+* **Objective Verdict System:** Organizes evidence into 3 fixed categories without acting as an arbitrary "truth authority":
+  * `Verified`
   * `Insufficient Evidence`
   * `Contradicted`
 * **Direct Source Attribution:** Every claim result and feed item links directly back to original publisher sources ("Read Original").

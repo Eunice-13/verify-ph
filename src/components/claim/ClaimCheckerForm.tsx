@@ -1,30 +1,43 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useAutoResizeTextarea } from "@/lib/useAutoResizeTextarea";
 import ClaimResult from "@/components/claim/ClaimResult";
-import { ClaimVerdictStatus } from "@/types";
-
-const CLAIM_VERDICT_STATES: ClaimVerdictStatus[] = ["VERIFIED", "CONTRADICTED", "INSUFFICIENT"];
+import { submitClaim } from "@/lib/claimChecker";
+import type { Claim } from "@/types";
 
 /**
  * The Claim Checker page's own input form + inline verdict result.
- * Placeholder only: the real fact-check backend is not connected yet, so
- * submitting a claim cycles through the three possible presentational
- * outcomes (VERIFIED / CONTRADICTED / INSUFFICIENT) using mock content.
+ * Connected to the real /api/claim-checker endpoint.
  */
 export default function ClaimCheckerForm() {
   const [value, setValue] = useState("");
-  const [verdict, setVerdict] = useState<ClaimVerdictStatus | null>(null);
+  const [claim, setClaim] = useState<Claim | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { ref: textareaRef, resize } = useAutoResizeTextarea();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const next = CLAIM_VERDICT_STATES[Math.floor(Math.random() * CLAIM_VERDICT_STATES.length)];
-    setVerdict(next);
+    const text = value.trim();
+    if (!text || loading) return;
+
+    setLoading(true);
+    setError(null);
+    setClaim(null);
     setValue("");
     requestAnimationFrame(resize);
+
+    const result = await submitClaim(text);
+
+    setLoading(false);
+
+    if (result.success && result.claim) {
+      setClaim(result.claim);
+    } else {
+      setError(result.error ?? "Something went wrong.");
+    }
   };
 
   return (
@@ -43,16 +56,33 @@ export default function ClaimCheckerForm() {
           }}
           placeholder="Paste a claim, headline, or link to fact-check…"
           className="flex-1 bg-transparent outline-none font-sans text-neutral-700 placeholder:text-neutral-400 resize-none max-h-60 overflow-y-auto leading-relaxed self-center"
+          disabled={loading}
         />
         <button
           type="submit"
           aria-label="Submit claim"
-          className="cursor-pointer shrink-0 w-9 h-9 rounded-full border border-neutral-300 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors self-center"
+          disabled={loading}
+          className="cursor-pointer shrink-0 w-9 h-9 rounded-full border border-neutral-300 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors self-center disabled:opacity-50"
         >
-          <Plus className="w-4 h-4" />
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
         </button>
       </form>
-      <div className="w-full">{verdict && <ClaimResult status={verdict} />}</div>
+
+      <div className="w-full">
+        {loading && (
+          <p className="text-center text-sm text-neutral-500 font-sans animate-pulse mt-8">
+            Analyzing claim against verified Philippine news sources…
+          </p>
+        )}
+        {error && (
+          <p className="text-center text-sm text-red-600 font-sans mt-6">{error}</p>
+        )}
+        {claim && <ClaimResult claim={claim} />}
+      </div>
     </>
   );
 }

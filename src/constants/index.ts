@@ -1,10 +1,3 @@
-// Verdict categories — fixed labels used by the Claim Checker.
-export const VERDICT_CATEGORIES = [
-  "Officially Confirmed",
-  "Corroborated",
-  "Developing",
-  "Insufficient Evidence",
-  "Contradicted",
-] as const;
-
-export type VerdictCategory = (typeof VERDICT_CATEGORIES)[number];
+// Re-export from types so both "@/constants" and "@/types" paths resolve
+// the same array. The gemini.ts prompt references this import.
+export { VERDICT_CATEGORIES, type VerdictCategory } from "@/types";
