@@ -4,12 +4,15 @@
 //   1. AI parses/understands the claim               -> parseClaim()
 //   2. Search trusted sources/news DB for evidence    -> searchArticlesFromDb()
 //   3. AI compares evidence                            -> generateVerdict()
+//   3b. If step 3 returns "Insufficient Evidence", fall back to a live
+//       search restricted to trusted PH news outlets  -> searchTrustedWebSources()
+//       and retry generateVerdict() with that evidence added.
 //   4. Returns a verdict plus the sources it used, and optionally persists
 //      the result in the `claims` table.
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { parseClaim, generateVerdict } from "@/lib/gemini";
+import { parseClaim, generateVerdict, searchTrustedWebSources } from "@/lib/gemini";
 import type { DbArticle, Claim, ClaimCheckerRequest } from "@/types";
 
 const MAX_CLAIM_LENGTH = 5000;
@@ -18,8 +21,11 @@ const EVIDENCE_LIMIT = 8;
 /**
  * Searches the articles table for rows relevant to the search query.
  * Uses Postgres full-text search (websearch_to_tsquery via `textSearch`)
- * over title + summary, falling back to a broader ILIKE search on the
- * original claim text if full-text search finds nothing.
+ * across title OR summary, falling back to a scored keyword match if full-
+ * text search finds nothing. The scored fallback ranks articles by how
+ * many extracted keywords they match (not just "any one keyword"), so a
+ * generic word like "government" alone can't surface an unrelated article,
+ * while an article matching most of the distinctive keywords ranks first.
  */
 async function searchArticlesFromDb(
   searchQuery: string,
@@ -28,46 +34,147 @@ async function searchArticlesFromDb(
   try {
     const db = supabaseServer();
 
-    // Try full-text search first.
-    const { data: ftsResults, error: ftsError } = await db
-      .from("articles")
-      .select("*")
-      .textSearch("title", searchQuery, { type: "websearch", config: "english" })
-      .order("published_at", { ascending: false })
-      .limit(EVIDENCE_LIMIT);
+    // Try full-text search across both title and summary — many articles
+    // have a vague/clickbait title where the actual matching facts (e.g.
+    // specific figures, names) only appear in the summary.
+    const [titleFts, summaryFts] = await Promise.all([
+      db
+        .from("articles")
+        .select("*")
+        .textSearch("title", searchQuery, { type: "websearch", config: "english" })
+        .order("published_at", { ascending: false })
+        .limit(EVIDENCE_LIMIT),
+      db
+        .from("articles")
+        .select("*")
+        .textSearch("summary", searchQuery, { type: "websearch", config: "english" })
+        .order("published_at", { ascending: false })
+        .limit(EVIDENCE_LIMIT),
+    ]);
 
-    if (!ftsError && ftsResults && ftsResults.length > 0) {
-      return ftsResults as DbArticle[];
+    const ftsResults = [
+      ...(titleFts.error ? [] : titleFts.data ?? []),
+      ...(summaryFts.error ? [] : summaryFts.data ?? []),
+    ];
+
+    if (ftsResults.length > 0) {
+      // De-dupe by id (an article can match both title and summary FTS).
+      const seen = new Set<string>();
+      const deduped = ftsResults.filter((a) => {
+        if (seen.has(a.id)) return false;
+        seen.add(a.id);
+        return true;
+      });
+      return deduped.slice(0, EVIDENCE_LIMIT) as DbArticle[];
     }
 
-    // Fallback: naive keyword ILIKE search across title + summary using the
-    // first few significant words of the search query / raw claim.
-    const keywords = searchQuery.split(/\s+/).filter((w) => w.length > 2).slice(0, 5);
-    if (keywords.length === 0) {
-      keywords.push(...rawClaim.split(/\s+/).filter((w) => w.length > 2).slice(0, 5));
-    }
+    // Fallback: scored keyword match across title + summary. Extract
+    // significant keywords from the AI's search query (preferred) and the
+    // raw claim, normalizing punctuation/currency symbols so formatting
+    // differences (e.g. "₱7.5-billion" vs "P7-billion" vs "7.5 billion")
+    // don't prevent a match on the underlying number/word.
+    const normalize = (s: string) =>
+      s
+        .replace(/[₱$]/g, "")
+        .replace(/[^\p{L}\p{N}\s.-]/gu, " ")
+        .toLowerCase();
+
+    // Common abbreviations/phrasing a user might type that won't literally
+    // appear in article text. Expand each to the term(s) actually likely
+    // to be in our articles, so e.g. "PH ranked 66th place" can still match
+    // an article whose text says "Philippines ranked 66th ... economies".
+    const SYNONYMS: Record<string, string[]> = {
+      ph: ["philippines", "philippine"],
+      phl: ["philippines", "philippine"],
+      rp: ["philippines", "philippine"],
+      pilipinas: ["philippines", "philippine"],
+      place: ["rank", "ranked", "ranking"],
+      spot: ["rank", "ranked", "ranking"],
+      position: ["rank", "ranked", "ranking"],
+      no: ["number"],
+      govt: ["government"],
+      dept: ["department"],
+    };
+
+    const expandSynonyms = (words: string[]): string[] => {
+      const expanded = [...words];
+      for (const w of words) {
+        // Strip a trailing ordinal suffix (66th -> 66) so a bare number in
+        // the claim can match a bare number in article text and vice versa.
+        const ordinalMatch = w.match(/^(\d+)(st|nd|rd|th)$/);
+        if (ordinalMatch) expanded.push(ordinalMatch[1]);
+
+        if (SYNONYMS[w]) expanded.push(...SYNONYMS[w]);
+      }
+      return expanded;
+    };
+
+    const extractKeywords = (s: string) => {
+      const words = normalize(s)
+        .split(/\s+/)
+        .map((w) => w.replace(/^p(?=\d)/, "").replace(/[.-]+$/, ""))
+        .filter((w) => w.length > 1);
+      return expandSynonyms(words).filter((w) => w.length > 2);
+    };
+
+    const keywords = Array.from(
+      new Set([...extractKeywords(searchQuery), ...extractKeywords(rawClaim)])
+    ).slice(0, 16);
+
     if (keywords.length === 0) return [];
 
-    const orFilter = keywords
+    // Extremely common words (stopwords) would match hundreds of unrelated
+    // articles if used in the SQL filter, silently pushing out the true
+    // match once results are capped. Use only distinctive keywords to
+    // build the SQL filter, but keep the full keyword list (including
+    // common ones) for scoring below, since they still help confirm a
+    // genuine match once combined with the distinctive ones.
+    const STOPWORDS = new Set([
+      "the", "and", "for", "are", "was", "were", "with", "from", "that",
+      "this", "have", "has", "had", "will", "would", "could", "should",
+      "government", "plan", "spending", "said", "into", "over", "amid",
+      "after", "before", "than", "their", "its", "his", "her", "they",
+    ]);
+    const distinctiveKeywords = keywords.filter((kw) => !STOPWORDS.has(kw));
+    const sqlKeywords = distinctiveKeywords.length > 0 ? distinctiveKeywords : keywords;
+
+    const orFilter = sqlKeywords
       .map((kw) => {
-        const escaped = kw.replace(/[%_]/g, "").replace(/,/g, "");
+        const escaped = kw.replace(/[%_]/g, "");
         return `title.ilike.%${escaped}%,summary.ilike.%${escaped}%`;
       })
       .join(",");
 
-    const { data: likeResults, error: likeError } = await db
+    // Fetch a large, unordered candidate pool (not just the most recent
+    // N) so scoring below chooses the best match by relevance, not by
+    // which broadly-matching articles happen to be newest.
+    const { data: candidates, error: likeError } = await db
       .from("articles")
       .select("*")
       .or(orFilter)
-      .order("published_at", { ascending: false })
-      .limit(EVIDENCE_LIMIT);
+      .limit(500);
 
     if (likeError) {
       console.error("[claim-checker] article search fallback failed:", likeError);
       return [];
     }
+    if (!candidates || candidates.length === 0) return [];
 
-    return (likeResults ?? []) as DbArticle[];
+    // Score each candidate by how many distinct keywords (including
+    // stopwords, for tie-breaking) it actually contains, then keep only
+    // articles matching a meaningful share of the keywords and return the
+    // best matches, most relevant first.
+    const minMatches = Math.min(2, keywords.length);
+    const scored = candidates
+      .map((article) => {
+        const haystack = normalize(`${article.title} ${article.summary ?? ""}`);
+        const matchCount = keywords.filter((kw) => haystack.includes(kw)).length;
+        return { article, matchCount };
+      })
+      .filter((s) => s.matchCount >= minMatches)
+      .sort((a, b) => b.matchCount - a.matchCount);
+
+    return scored.slice(0, EVIDENCE_LIMIT).map((s) => s.article) as DbArticle[];
   } catch (err) {
     // If the articles table doesn't exist yet, return empty (Gemini will
     // respond with "Insufficient Evidence").
@@ -151,8 +258,32 @@ export async function POST(request: Request) {
     // Step 2: Search trusted sources/news DB for related evidence.
     const evidence = await searchArticlesFromDb(parsed.search_query, rawClaim);
 
-    // Step 3 + 4: AI compares evidence and returns a verdict + sources.
-    const result = await generateVerdict(parsed.normalized_claim, rawClaim, evidence);
+    // Step 3: AI compares the claim against our own DB evidence first.
+    let result = await generateVerdict(parsed.normalized_claim, rawClaim, evidence);
+
+    // Step 3b: If our own database evidence wasn't enough to reach a
+    // verdict, fall back to a live search restricted to trusted Philippine
+    // news outlets and try again with that added as evidence. This lets us
+    // correctly verify claims covered by outlets not yet in our RSS
+    // pipeline (e.g. ABS-CBN), or articles published before ingestion.
+    if (result.verdict === "Insufficient Evidence") {
+      try {
+        const externalEvidence = await searchTrustedWebSources(
+          parsed.normalized_claim,
+          rawClaim
+        );
+        if (externalEvidence.length > 0) {
+          result = await generateVerdict(
+            parsed.normalized_claim,
+            rawClaim,
+            evidence,
+            externalEvidence
+          );
+        }
+      } catch (err) {
+        console.error("[claim-checker] trusted web source search failed:", err);
+      }
+    }
 
     // Try to persist (non-fatal if claims table doesn't exist).
     const persistedClaim = await persistClaim(
