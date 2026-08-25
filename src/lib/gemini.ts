@@ -1,9 +1,11 @@
 // Google Gemini API client and helper functions used by the Claim Checker
 // pipeline (see /api/claim-checker).
 //
-// Uses the standard Gemini Developer API — requires an AIza API key.
-// AQ. keys from AI Studio do NOT work with the API directly (they only work
-// in the AI Studio web UI which uses browser OAuth).
+// Pipeline responsibilities handled here:
+//   1. parseClaim()   — understand a pasted claim (text or link) and produce
+//                        a short search query / topic summary.
+//   2. generateVerdict() — compare the claim against retrieved evidence
+//                        articles and return one of the 5 fixed verdicts.
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { VERDICT_CATEGORIES } from "@/constants";
@@ -15,10 +17,9 @@ if (!apiKey) {
   console.warn("[gemini] GEMINI_API_KEY is not set.");
 }
 
-// Standard Gemini Developer API — requires AIza key
 const ai = new GoogleGenAI({ apiKey: apiKey ?? "" });
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.6-flash";
 
 export interface ParsedClaim {
   /** Short, keyword-focused query suitable for full-text search against articles. */
@@ -89,7 +90,7 @@ const VERDICT_RESULT_SCHEMA = {
     verdict: {
       type: Type.STRING,
       enum: [...VERDICT_CATEGORIES],
-      description: "Exactly one of the five fixed verdict labels.",
+      description: "Exactly one of the three fixed verdict labels.",
     },
     ai_explanation: {
       type: Type.STRING,
@@ -157,7 +158,7 @@ export async function generateVerdict(
 
 1. Use ONLY the articles listed below as evidence. Never invent sources or cite anything not present in this list.
 2. Compare the claim against the title, summary, category, source_name, and published_at of each article.
-3. Return exactly one of these five fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
+3. Return exactly one of these three fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
 4. If no retrieved article is actually relevant to the claim, you MUST return "Insufficient Evidence" and leave sources_used empty.
 5. "sources_used" must be a subset of the articles provided below (same article_id/title/source_url) — only include ones you actually relied on.
 6. Be neutral and evidence-first. Do not act as an arbiter of absolute truth; describe what the evidence shows or does not show.

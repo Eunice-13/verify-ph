@@ -1,4 +1,4 @@
-import { Check, X, TriangleAlert, Clock, FileCheck } from "lucide-react";
+import { Check, X, TriangleAlert } from "lucide-react";
 import type { Claim, VerdictCategory, ClaimSource } from "@/types";
 
 type IconComponent = typeof Check;
@@ -7,20 +7,10 @@ const VERDICT_STYLES: Record<
   VerdictCategory,
   { badgeClass: string; label: string; Icon: IconComponent }
 > = {
-  "Officially Confirmed": {
+  Verified: {
     badgeClass: "bg-emerald-700 border-emerald-800",
-    label: "OFFICIALLY CONFIRMED",
+    label: "VERIFIED",
     Icon: Check,
-  },
-  Corroborated: {
-    badgeClass: "bg-emerald-600 border-emerald-700",
-    label: "CORROBORATED",
-    Icon: FileCheck,
-  },
-  Developing: {
-    badgeClass: "bg-amber-600 border-amber-700",
-    label: "DEVELOPING",
-    Icon: Clock,
   },
   "Insufficient Evidence": {
     badgeClass: "bg-neutral-500 border-neutral-600",
