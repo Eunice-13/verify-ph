@@ -58,3 +58,58 @@ export const VERDICT_CATEGORIES = [
 ] as const;
 
 export type VerdictCategory = (typeof VERDICT_CATEGORIES)[number];
+
+// ---- RSS ingestion types ----
+
+/** Category values stored in the database (title-case, not the UI screaming-case). */
+export type ArticleCategory =
+  | "News & Politics"
+  | "Economy"
+  | "Health & Safety"
+  | "Lifestyle"
+  | "General";
+
+/** Shape of a row to be inserted into the Supabase `articles` table. */
+export interface ArticleInsert {
+  title: string;
+  summary: string | null;
+  source_url: string;
+  source_name: string;
+  published_at: string;
+  category: ArticleCategory;
+  image_url: string | null;
+}
+
+/** A trusted RSS source used by the ingestion cron job. */
+export interface TrustedRssSource {
+  id: string;
+  name: string;
+  feedUrl: string;
+  fallbackCategory: ArticleCategory;
+}
+
+/** Per-source result returned after ingesting a single feed. */
+export interface SourceIngestionResult {
+  sourceId: string;
+  sourceName: string;
+  fetched: number;
+  accepted: number;
+  inserted: number;
+  updated: number;
+  duplicatesIgnored: number;
+  error?: string;
+}
+
+/** Top-level result from a full ingestion run. */
+export interface IngestionResult {
+  status: "ok" | "partial" | "failed";
+  totals: {
+    fetched: number;
+    accepted: number;
+    inserted: number;
+    updated: number;
+    duplicatesIgnored: number;
+    failedSources: number;
+  };
+  sources: SourceIngestionResult[];
+}

@@ -16,11 +16,7 @@
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-<<<<<<< HEAD
-    "rss-parser": "^3.13.0"
-=======
     "rss-parser": "3.13.0"
->>>>>>> 73d679d09f051280d4a4a376d92b8f2a11059ea7
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,5 +27,8 @@
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
