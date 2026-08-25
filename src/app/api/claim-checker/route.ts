@@ -2,10 +2,12 @@
 //
 // Pipeline:
 //   1. AI parses/understands the claim               -> parseClaim()
-//   2. Search trusted sources/news DB for evidence    -> searchArticles()
+//   2. Search trusted sources/news DB for evidence    -> searchArticlesFromDb()
 //   3. AI compares evidence                            -> generateVerdict()
 //   4. Returns a verdict plus the sources it used, and persists the result
 //      in the `claims` table.
+//
+// LIVE DB MODE: Step 2 searches the real Supabase `articles` table.
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
@@ -21,7 +23,7 @@ const EVIDENCE_LIMIT = 8;
  * over title + summary, falling back to a broader ILIKE search on the
  * original claim text if full-text search finds nothing.
  */
-async function searchArticles(
+async function searchArticlesFromDb(
   searchQuery: string,
   rawClaim: string
 ): Promise<Article[]> {
@@ -30,10 +32,7 @@ async function searchArticles(
   const { data: ftsResults, error: ftsError } = await db
     .from("articles")
     .select("*")
-    .textSearch("title", searchQuery, {
-      type: "websearch",
-      config: "english",
-    })
+    .textSearch("title", searchQuery, { type: "websearch", config: "english" })
     .order("published_at", { ascending: false })
     .limit(EVIDENCE_LIMIT);
 
@@ -43,18 +42,11 @@ async function searchArticles(
 
   // Fallback: naive keyword ILIKE search across title + summary using the
   // first few significant words of the search query / raw claim.
-  const keywords = searchQuery
-    .split(/\s+/)
-    .filter((w) => w.length > 2)
-    .slice(0, 5);
-
+  const keywords = searchQuery.split(/\s+/).filter((w) => w.length > 2).slice(0, 5);
   if (keywords.length === 0) {
     keywords.push(...rawClaim.split(/\s+/).filter((w) => w.length > 2).slice(0, 5));
   }
-
-  if (keywords.length === 0) {
-    return [];
-  }
+  if (keywords.length === 0) return [];
 
   const orFilter = keywords
     .map((kw) => {
@@ -130,7 +122,7 @@ export async function POST(request: Request) {
     const parsed = await parseClaim(rawClaim);
 
     // Step 2: Search trusted sources/news DB for related evidence.
-    const evidence = await searchArticles(parsed.search_query, rawClaim);
+    const evidence = await searchArticlesFromDb(parsed.search_query, rawClaim);
 
     // Step 3 + 4: AI compares evidence and returns a verdict + sources.
     const result = await generateVerdict(parsed.normalized_claim, rawClaim, evidence);
