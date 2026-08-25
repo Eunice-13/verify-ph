@@ -35,7 +35,7 @@ const PARSE_CLAIM_SCHEMA = {
     search_query: {
       type: Type.STRING,
       description:
-        "3-8 plain keywords (people, places, organizations, events, bare numbers) best suited for a Postgres full-text search against a news article database. Write numbers as plain digits without currency symbols or units glued on (e.g. '7.5 billion' not 'P7.5-billion' or '₱7.5B'). Do not include punctuation like hyphens or slashes within a keyword.",
+        "3-8 plain keywords (people, places, organizations, events, bare numbers) best suited for a Postgres full-text search against a news article database. Write numbers as plain digits without currency symbols or units glued on (e.g. '7.5 billion' not 'P7.5-billion' or '₱7.5B'). Do not include punctuation like hyphens or slashes within a keyword. Expand common Philippine abbreviations to their full form (e.g. 'PH' or 'RP' -> 'Philippines', 'DOE' -> 'Department of Energy', 'DOF' -> 'Department of Finance').",
     },
     normalized_claim: {
       type: Type.STRING,

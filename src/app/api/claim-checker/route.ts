@@ -79,15 +79,47 @@ async function searchArticlesFromDb(
         .replace(/[^\p{L}\p{N}\s.-]/gu, " ")
         .toLowerCase();
 
-    const extractKeywords = (s: string) =>
-      normalize(s)
+    // Common abbreviations/phrasing a user might type that won't literally
+    // appear in article text. Expand each to the term(s) actually likely
+    // to be in our articles, so e.g. "PH ranked 66th place" can still match
+    // an article whose text says "Philippines ranked 66th ... economies".
+    const SYNONYMS: Record<string, string[]> = {
+      ph: ["philippines", "philippine"],
+      phl: ["philippines", "philippine"],
+      rp: ["philippines", "philippine"],
+      pilipinas: ["philippines", "philippine"],
+      place: ["rank", "ranked", "ranking"],
+      spot: ["rank", "ranked", "ranking"],
+      position: ["rank", "ranked", "ranking"],
+      no: ["number"],
+      govt: ["government"],
+      dept: ["department"],
+    };
+
+    const expandSynonyms = (words: string[]): string[] => {
+      const expanded = [...words];
+      for (const w of words) {
+        // Strip a trailing ordinal suffix (66th -> 66) so a bare number in
+        // the claim can match a bare number in article text and vice versa.
+        const ordinalMatch = w.match(/^(\d+)(st|nd|rd|th)$/);
+        if (ordinalMatch) expanded.push(ordinalMatch[1]);
+
+        if (SYNONYMS[w]) expanded.push(...SYNONYMS[w]);
+      }
+      return expanded;
+    };
+
+    const extractKeywords = (s: string) => {
+      const words = normalize(s)
         .split(/\s+/)
         .map((w) => w.replace(/^p(?=\d)/, "").replace(/[.-]+$/, ""))
-        .filter((w) => w.length > 2);
+        .filter((w) => w.length > 1);
+      return expandSynonyms(words).filter((w) => w.length > 2);
+    };
 
     const keywords = Array.from(
       new Set([...extractKeywords(searchQuery), ...extractKeywords(rawClaim)])
-    ).slice(0, 12);
+    ).slice(0, 16);
 
     if (keywords.length === 0) return [];
 
