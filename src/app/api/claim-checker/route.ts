@@ -4,10 +4,8 @@
 //   1. AI parses/understands the claim               -> parseClaim()
 //   2. Search trusted sources/news DB for evidence    -> searchArticlesFromDb()
 //   3. AI compares evidence                            -> generateVerdict()
-//   4. Returns a verdict plus the sources it used, and persists the result
-//      in the `claims` table.
-//
-// LIVE DB MODE: Step 2 searches the real Supabase `articles` table.
+//   4. Returns a verdict plus the sources it used, and optionally persists
+//      the result in the `claims` table.
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
@@ -27,47 +25,95 @@ async function searchArticlesFromDb(
   searchQuery: string,
   rawClaim: string
 ): Promise<DbArticle[]> {
-  const db = supabaseServer();
+  try {
+    const db = supabaseServer();
 
-  const { data: ftsResults, error: ftsError } = await db
-    .from("articles")
-    .select("*")
-    .textSearch("title", searchQuery, { type: "websearch", config: "english" })
-    .order("published_at", { ascending: false })
-    .limit(EVIDENCE_LIMIT);
+    // Try full-text search first.
+    const { data: ftsResults, error: ftsError } = await db
+      .from("articles")
+      .select("*")
+      .textSearch("title", searchQuery, { type: "websearch", config: "english" })
+      .order("published_at", { ascending: false })
+      .limit(EVIDENCE_LIMIT);
 
-  if (!ftsError && ftsResults && ftsResults.length > 0) {
-    return ftsResults as DbArticle[];
-  }
+    if (!ftsError && ftsResults && ftsResults.length > 0) {
+      return ftsResults as DbArticle[];
+    }
 
-  // Fallback: naive keyword ILIKE search across title + summary using the
-  // first few significant words of the search query / raw claim.
-  const keywords = searchQuery.split(/\s+/).filter((w) => w.length > 2).slice(0, 5);
-  if (keywords.length === 0) {
-    keywords.push(...rawClaim.split(/\s+/).filter((w) => w.length > 2).slice(0, 5));
-  }
-  if (keywords.length === 0) return [];
+    // Fallback: naive keyword ILIKE search across title + summary using the
+    // first few significant words of the search query / raw claim.
+    const keywords = searchQuery.split(/\s+/).filter((w) => w.length > 2).slice(0, 5);
+    if (keywords.length === 0) {
+      keywords.push(...rawClaim.split(/\s+/).filter((w) => w.length > 2).slice(0, 5));
+    }
+    if (keywords.length === 0) return [];
 
-  const orFilter = keywords
-    .map((kw) => {
-      const escaped = kw.replace(/[%_]/g, "").replace(/,/g, "");
-      return `title.ilike.%${escaped}%,summary.ilike.%${escaped}%`;
-    })
-    .join(",");
+    const orFilter = keywords
+      .map((kw) => {
+        const escaped = kw.replace(/[%_]/g, "").replace(/,/g, "");
+        return `title.ilike.%${escaped}%,summary.ilike.%${escaped}%`;
+      })
+      .join(",");
 
-  const { data: likeResults, error: likeError } = await db
-    .from("articles")
-    .select("*")
-    .or(orFilter)
-    .order("published_at", { ascending: false })
-    .limit(EVIDENCE_LIMIT);
+    const { data: likeResults, error: likeError } = await db
+      .from("articles")
+      .select("*")
+      .or(orFilter)
+      .order("published_at", { ascending: false })
+      .limit(EVIDENCE_LIMIT);
 
-  if (likeError) {
-    console.error("[claim-checker] article search fallback failed:", likeError);
+    if (likeError) {
+      console.error("[claim-checker] article search fallback failed:", likeError);
+      return [];
+    }
+
+    return (likeResults ?? []) as DbArticle[];
+  } catch (err) {
+    // If the articles table doesn't exist yet, return empty (Gemini will
+    // respond with "Insufficient Evidence").
+    console.error("[claim-checker] article search threw:", err);
     return [];
   }
+}
 
-  return (likeResults ?? []) as DbArticle[];
+/**
+ * Attempts to persist the claim result in Supabase. Non-fatal if it fails
+ * (table might not exist yet during early development).
+ */
+async function persistClaim(
+  rawClaim: string,
+  verdict: string,
+  aiExplanation: string,
+  sourcesUsed: unknown[],
+  confidence: number
+): Promise<Claim | null> {
+  try {
+    const db = supabaseServer();
+
+    const { data, error } = await db
+      .from("claims")
+      .insert({
+        user_text: rawClaim,
+        status: "completed",
+        verdict,
+        ai_explanation: aiExplanation,
+        sources_used: sourcesUsed,
+        confidence,
+        processed_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("[claim-checker] could not persist claim:", error.message);
+      return null;
+    }
+
+    return data as Claim;
+  } catch (err) {
+    console.warn("[claim-checker] persist threw (table may not exist):", err);
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -98,25 +144,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const db = supabaseServer();
-
-  // Create the initial pending claim row.
-  const { data: insertedClaim, error: insertError } = await db
-    .from("claims")
-    .insert({ user_text: rawClaim, status: "pending" })
-    .select()
-    .single();
-
-  if (insertError || !insertedClaim) {
-    console.error("[claim-checker] failed to create claim row:", insertError);
-    return NextResponse.json(
-      { error: "Failed to create claim record." },
-      { status: 500 }
-    );
-  }
-
-  const claimId = insertedClaim.id as string;
-
   try {
     // Step 1: AI parses/understands the claim.
     const parsed = await parseClaim(rawClaim);
@@ -127,39 +154,38 @@ export async function POST(request: Request) {
     // Step 3 + 4: AI compares evidence and returns a verdict + sources.
     const result = await generateVerdict(parsed.normalized_claim, rawClaim, evidence);
 
-    const { data: updatedClaim, error: updateError } = await db
-      .from("claims")
-      .update({
-        verdict: result.verdict,
-        ai_explanation: result.ai_explanation,
-        sources_used: result.sources_used,
-        confidence: result.confidence,
-        status: "completed",
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", claimId)
-      .select()
-      .single();
+    // Try to persist (non-fatal if claims table doesn't exist).
+    const persistedClaim = await persistClaim(
+      rawClaim,
+      result.verdict,
+      result.ai_explanation,
+      result.sources_used,
+      result.confidence,
+    );
 
-    if (updateError || !updatedClaim) {
-      console.error("[claim-checker] failed to update claim row:", updateError);
-      return NextResponse.json(
-        { error: "Verdict generated but failed to persist result." },
-        { status: 500 }
-      );
-    }
+    // Build response — use persisted row if available, otherwise construct one.
+    const responseClaim: Claim = persistedClaim ?? {
+      id: crypto.randomUUID(),
+      user_text: rawClaim,
+      status: "completed",
+      verdict: result.verdict,
+      ai_explanation: result.ai_explanation,
+      sources_used: result.sources_used,
+      confidence: result.confidence,
+      processed_at: new Date().toISOString(),
+    };
 
-    return NextResponse.json({ claim: updatedClaim as Claim }, { status: 200 });
-  } catch (err) {
-    console.error("[claim-checker] pipeline failed:", err);
-
-    await db
-      .from("claims")
-      .update({ status: "failed", processed_at: new Date().toISOString() })
-      .eq("id", claimId);
+    return NextResponse.json({ claim: responseClaim }, { status: 200 });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Unknown error";
+    console.error("[claim-checker] pipeline failed:", message, err);
 
     return NextResponse.json(
-      { error: "Claim checker pipeline failed. Please try again." },
+      {
+        error: "Claim checker pipeline failed. Please try again.",
+        detail: process.env.NODE_ENV === "development" ? message : undefined,
+      },
       { status: 502 }
     );
   }
