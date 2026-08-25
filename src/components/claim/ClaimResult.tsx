@@ -25,6 +25,14 @@ const VERDICT_STYLES: Record<
 };
 
 function SourceCard({ source }: { source: ClaimSource }) {
+  const publishedLabel = source.published_at
+    ? new Date(source.published_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <a
       href={source.source_url}
@@ -32,16 +40,19 @@ function SourceCard({ source }: { source: ClaimSource }) {
       rel="noopener noreferrer"
       className="block rounded-lg border border-neutral-200 p-3 hover:border-emerald-600 hover:shadow-sm transition-all"
     >
-      <p className="font-sans text-sm font-medium text-neutral-900 leading-snug">
-        {source.title}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-sans text-sm font-medium text-neutral-900 leading-snug">
+          {source.title}
+        </p>
+        {source.is_external && (
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+            Web
+          </span>
+        )}
+      </div>
       <p className="mt-1 text-xs text-neutral-500">
-        {source.source_name} &middot;{" "}
-        {new Date(source.published_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })}
+        {source.source_name}
+        {publishedLabel && <> &middot; {publishedLabel}</>}
       </p>
       {source.relevance && (
         <p className="mt-1 text-xs text-emerald-800 italic">{source.relevance}</p>
