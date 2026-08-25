@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Category } from "@/types";
-import { getVerifiedArticles } from "@/lib/mockNews";
+import { fetchArticlesServer } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 
@@ -10,8 +10,14 @@ import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
  * category page, which is NOT capped (see CategoryView) and grows
  * automatically as articles are added.
  */
-export default function CategoryRow({ category, count = 4 }: { category: Category; count?: number }) {
-  const articles = getVerifiedArticles(category).slice(0, count);
+export default async function CategoryRow({
+  category,
+  count = 4,
+}: {
+  category: Category;
+  count?: number;
+}) {
+  const articles = await fetchArticlesServer({ category, limit: count });
 
   return (
     <section className="max-w-6xl mx-auto px-6 py-8">

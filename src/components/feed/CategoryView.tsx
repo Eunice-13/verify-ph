@@ -1,24 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Category } from "@/types";
-import { getVerifiedArticles } from "@/lib/mockNews";
+import { Article, Category } from "@/types";
+import { fetchArticlesClient } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 
 /**
- * Category page view. The first 2 verified articles render as large cards,
- * and EVERY remaining verified article in the category renders in the
- * 4-across grid below — this list is never capped, so it automatically
- * expands as new articles are added to NEWS_DATA. "Back ->" returns home.
+ * Category page view. Fetches real articles from Supabase via /api/articles.
+ * The first 2 articles render as large cards and the rest in a 4-across grid.
  */
 export default function CategoryView({ category }: { category: Category }) {
-  const articles = getVerifiedArticles(category);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    fetchArticlesClient({ category, limit: 40 }).then((data) => {
+      if (!cancelled) {
+        setArticles(data);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
   const large = articles.slice(0, 2);
   const rest = articles.slice(2);
 
   const minLargeSlots = 2;
   const minRestSlots = 4;
-  const largeSlotCount = Math.max(large.length, minLargeSlots);
-  const restSlotCount = Math.max(rest.length, minRestSlots);
+  const largeSlotCount = loading ? minLargeSlots : Math.max(large.length, minLargeSlots);
+  const restSlotCount = loading ? minRestSlots : Math.max(rest.length, minRestSlots);
 
   return (
     <>
@@ -62,7 +81,7 @@ export default function CategoryView({ category }: { category: Category }) {
             )
           )}
         </div>
-        {articles.length === 0 && (
+        {!loading && articles.length === 0 && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
             No verified stories available in this category yet.
           </p>
