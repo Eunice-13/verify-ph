@@ -1,9 +1,6 @@
 // Google Gemini API client and helper functions used by the Claim Checker
 // pipeline (see /api/claim-checker).
 //
-// Uses the Vertex AI backend to support AQ. auth keys (the new default
-// format from Google AI Studio as of 2026).
-//
 // Pipeline responsibilities handled here:
 //   1. parseClaim()   — understand a pasted claim (text or link) and produce
 //                        a short search query / topic summary.
@@ -15,25 +12,14 @@ import { VERDICT_CATEGORIES } from "@/constants";
 import type { DbArticle, GeminiVerdictResult } from "@/types";
 
 const apiKey = process.env.GEMINI_API_KEY;
-const project = process.env.GOOGLE_CLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
 
 if (!apiKey) {
   console.warn("[gemini] GEMINI_API_KEY is not set.");
 }
 
-// Use Vertex AI backend if a project is configured (required for AQ. keys).
-// Falls back to the Gemini Developer API if no project is set (for AIza keys).
-const ai = project
-  ? new GoogleGenAI({
-      vertexai: true,
-      project,
-      location,
-      apiKey: apiKey ?? "",
-    })
-  : new GoogleGenAI({ apiKey: apiKey ?? "" });
+const ai = new GoogleGenAI({ apiKey: apiKey ?? "" });
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.6-flash";
 
 export interface ParsedClaim {
   /** Short, keyword-focused query suitable for full-text search against articles. */
