@@ -90,7 +90,7 @@ const VERDICT_RESULT_SCHEMA = {
     verdict: {
       type: Type.STRING,
       enum: [...VERDICT_CATEGORIES],
-      description: "Exactly one of the five fixed verdict labels.",
+      description: "Exactly one of the three fixed verdict labels.",
     },
     ai_explanation: {
       type: Type.STRING,
@@ -158,7 +158,7 @@ export async function generateVerdict(
 
 1. Use ONLY the articles listed below as evidence. Never invent sources or cite anything not present in this list.
 2. Compare the claim against the title, summary, category, source_name, and published_at of each article.
-3. Return exactly one of these five fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
+3. Return exactly one of these three fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
 4. If no retrieved article is actually relevant to the claim, you MUST return "Insufficient Evidence" and leave sources_used empty.
 5. "sources_used" must be a subset of the articles provided below (same article_id/title/source_url) — only include ones you actually relied on.
 6. Be neutral and evidence-first. Do not act as an arbiter of absolute truth; describe what the evidence shows or does not show.

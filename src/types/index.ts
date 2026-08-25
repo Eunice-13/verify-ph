@@ -50,9 +50,7 @@ export interface ClaimVerdict {
 
 // Verdict categories — fixed labels used by the Claim Checker.
 export const VERDICT_CATEGORIES = [
-  "Officially Confirmed",
-  "Corroborated",
-  "Developing",
+  "Verified",
   "Insufficient Evidence",
   "Contradicted",
 ] as const;
