@@ -1,29 +1,44 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces } from "next/font/google";
+import Header from "@/components/layout/Header";
+import SubNav from "@/components/layout/SubNav";
+import Footer from "@/components/layout/Footer";
+import FloatingClaimBar from "@/components/layout/FloatingClaimBar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  weight: ["600", "700", "900"],
+  style: ["normal", "italic"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
+export const metadata: Metadata = {
   title: "VerifyPH — Civic News & AI Claim Checker",
   description: "Civic news application & AI-assisted claim checker.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${fraunces.variable} h-full antialiased`}>
+      <head>
+        {/* Open Sauce One isn't distributed via Google Fonts — loaded from
+            Fontshare exactly as in the original static design, and mapped
+            to --font-open-sauce / font-sans in globals.css. */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=open-sauce-one@400,500,600,700&display=swap"
+          rel="stylesheet"
+        />
+        <style>{`:root { --font-open-sauce: "Open Sauce One"; }`}</style>
+      </head>
+      <body className="min-h-full flex flex-col bg-[#f4f1ea] font-sans text-neutral-800">
+        <Header />
+        <SubNav />
+        {children}
+        <FloatingClaimBar />
+        <Footer />
+      </body>
     </html>
   );
 }
