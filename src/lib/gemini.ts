@@ -1,25 +1,39 @@
 // Google Gemini API client and helper functions used by the Claim Checker
 // pipeline (see /api/claim-checker).
 //
+// Uses the Vertex AI backend to support AQ. auth keys (the new default
+// format from Google AI Studio as of 2026).
+//
 // Pipeline responsibilities handled here:
 //   1. parseClaim()   — understand a pasted claim (text or link) and produce
 //                        a short search query / topic summary.
 //   2. generateVerdict() — compare the claim against retrieved evidence
-//                        articles and return one of the 3 fixed verdicts.
+//                        articles and return one of the 5 fixed verdicts.
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { VERDICT_CATEGORIES } from "@/constants";
 import type { DbArticle, GeminiVerdictResult } from "@/types";
 
 const apiKey = process.env.GEMINI_API_KEY;
+const project = process.env.GOOGLE_CLOUD_PROJECT;
+const location = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
 
 if (!apiKey) {
   console.warn("[gemini] GEMINI_API_KEY is not set.");
 }
 
-const ai = new GoogleGenAI({ apiKey: apiKey ?? "" });
+// Use Vertex AI backend if a project is configured (required for AQ. keys).
+// Falls back to the Gemini Developer API if no project is set (for AIza keys).
+const ai = project
+  ? new GoogleGenAI({
+      vertexai: true,
+      project,
+      location,
+      apiKey: apiKey ?? "",
+    })
+  : new GoogleGenAI({ apiKey: apiKey ?? "" });
 
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-2.5-flash";
 
 export interface ParsedClaim {
   /** Short, keyword-focused query suitable for full-text search against articles. */
@@ -90,7 +104,7 @@ const VERDICT_RESULT_SCHEMA = {
     verdict: {
       type: Type.STRING,
       enum: [...VERDICT_CATEGORIES],
-      description: "Exactly one of the three fixed verdict labels.",
+      description: "Exactly one of the five fixed verdict labels.",
     },
     ai_explanation: {
       type: Type.STRING,
@@ -158,7 +172,7 @@ export async function generateVerdict(
 
 1. Use ONLY the articles listed below as evidence. Never invent sources or cite anything not present in this list.
 2. Compare the claim against the title, summary, category, source_name, and published_at of each article.
-3. Return exactly one of these three fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
+3. Return exactly one of these five fixed verdict labels: ${VERDICT_CATEGORIES.join(", ")}.
 4. If no retrieved article is actually relevant to the claim, you MUST return "Insufficient Evidence" and leave sources_used empty.
 5. "sources_used" must be a subset of the articles provided below (same article_id/title/source_url) — only include ones you actually relied on.
 6. Be neutral and evidence-first. Do not act as an arbiter of absolute truth; describe what the evidence shows or does not show.

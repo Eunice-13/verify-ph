@@ -20,7 +20,10 @@ export async function submitClaim(claimText: string): Promise<ClaimCheckResult> 
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      return { success: false, error: body.error ?? "Something went wrong." };
+      return {
+        success: false,
+        error: body.detail ?? body.error ?? "Something went wrong.",
+      };
     }
 
     const data = (await res.json()) as ClaimCheckerSuccessResponse;
