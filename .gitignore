@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# eval run outputs (timestamped results from eval/run-eval.mjs — the eval
+# set and runner script itself should still be committed)
+/eval/results-*.json
