@@ -1,26 +1,131 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-serif: var(--font-fraunces), "Georgia", serif;
+  --font-sans: var(--font-open-sauce), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f1ea;
+}
+
+/* ---- View fade transition (home / category / claim checker) ----
+   Plays a one-shot fade-in whenever #app is (re)mounted (i.e. whenever the
+   `transitionKey` passed to <ViewTransition> changes, since that key forces
+   React to create a fresh DOM node). `forwards` fill-mode means the
+   animation's end state (opacity: 1) persists after it finishes, and the
+   base `opacity: 1` on #app guarantees content is visible even if the
+   animation is skipped entirely (no-JS, reduced motion, etc). ---- */
+#app {
+  opacity: 1;
+}
+
+.view-fade {
+  animation: view-fade-in 400ms ease-in-out;
+}
+
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-fade {
+    animation: none;
+  }
+}
+
+/* ---- Hamburger dropdown popup ---- */
+#nav-dropdown.dropdown-anim {
+  transform: translateY(-6px);
+  opacity: 0;
+  transition: transform 400ms ease-out, opacity 400ms ease-out;
+}
+
+#nav-dropdown.dropdown-open {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ---- Claim checker input: green outline + glow on focus ---- */
+.claim-input-wrap:focus-within {
+  border-color: #065f46; /* emerald-800 */
+  box-shadow: 0 0 0 4px rgba(6, 95, 70, 0.3), 0 0 18px rgba(6, 95, 70, 0.5);
+}
+
+/* ---- Floating / locking claim-checker bar (home + category pages) ----
+   Follows the viewport (fixed, centered) while scrolling, then locks into
+   an absolute position within the document once the user nears the bottom
+   of the page, so it never overlaps the footer reveal. ---- */
+#floating-claim-bar {
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 0 1.5rem;
+  transition: opacity 400ms ease-in-out;
+}
+
+#floating-claim-bar.claim-bar-fixed {
+  position: fixed;
+  bottom: 2rem;
+}
+
+#floating-claim-bar.claim-bar-locked {
+  position: absolute;
+  bottom: 7rem;
+}
+
+/* ---- Floating bar while showing a verdict: drop out of fixed/locked
+   positioning and sit in normal document flow (like the Claim Checker
+   page's own result), so the verdict card pushes the page instead of
+   overlapping it or clipping off-screen. ---- */
+#floating-claim-bar.claim-bar-result {
+  position: static;
+  bottom: auto;
+  margin: 2rem 0;
+}
+
+/* ---- Footer: hidden until the user reaches the very bottom of the page ---- */
+#site-footer.footer-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out, visibility 0s 400ms;
+}
+
+#site-footer.footer-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
+}
+
+/* ---- Minimal green scrollbar that blends into the page ---- */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #4c8267 transparent; /* thumb, track */
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #4c8267;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #33604a;
 }
