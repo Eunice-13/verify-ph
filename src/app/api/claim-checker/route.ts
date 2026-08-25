@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { parseClaim, generateVerdict } from "@/lib/gemini";
-import type { Article, Claim, ClaimCheckerRequest } from "@/types";
+import type { DbArticle, Claim, ClaimCheckerRequest } from "@/types";
 
 const MAX_CLAIM_LENGTH = 5000;
 const EVIDENCE_LIMIT = 8;
@@ -26,7 +26,7 @@ const EVIDENCE_LIMIT = 8;
 async function searchArticlesFromDb(
   searchQuery: string,
   rawClaim: string
-): Promise<Article[]> {
+): Promise<DbArticle[]> {
   const db = supabaseServer();
 
   const { data: ftsResults, error: ftsError } = await db
@@ -37,7 +37,7 @@ async function searchArticlesFromDb(
     .limit(EVIDENCE_LIMIT);
 
   if (!ftsError && ftsResults && ftsResults.length > 0) {
-    return ftsResults as Article[];
+    return ftsResults as DbArticle[];
   }
 
   // Fallback: naive keyword ILIKE search across title + summary using the
@@ -67,7 +67,7 @@ async function searchArticlesFromDb(
     return [];
   }
 
-  return (likeResults ?? []) as Article[];
+  return (likeResults ?? []) as DbArticle[];
 }
 
 export async function POST(request: Request) {

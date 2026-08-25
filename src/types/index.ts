@@ -113,3 +113,64 @@ export interface IngestionResult {
   };
   sources: SourceIngestionResult[];
 }
+
+// ---- Database row types (Supabase `articles` / `claims` tables) ----
+
+/** A row from the Supabase `articles` table (as returned by select("*")). */
+export interface DbArticle {
+  id: string;
+  title: string;
+  summary: string | null;
+  source_url: string;
+  source_name: string;
+  published_at: string;
+  category: ArticleCategory;
+  image_url: string | null;
+  created_at?: string;
+}
+
+/** Request body for POST /api/claim-checker. */
+export interface ClaimCheckerRequest {
+  claim: string;
+}
+
+/** A source cited by the AI in a claim-check verdict. */
+export interface ClaimSource {
+  article_id: string;
+  title: string;
+  source_name: string;
+  source_url: string;
+  published_at: string;
+  relevance?: string;
+}
+
+/** A row from the Supabase `claims` table. */
+export interface Claim {
+  id: string;
+  user_text: string;
+  status: "pending" | "completed" | "failed";
+  verdict?: VerdictCategory | null;
+  ai_explanation?: string | null;
+  sources_used?: ClaimSource[] | null;
+  confidence?: number | null;
+  processed_at?: string | null;
+  created_at?: string;
+}
+
+/** Shape returned from generateVerdict() in gemini.ts. */
+export interface GeminiVerdictResult {
+  verdict: VerdictCategory;
+  ai_explanation: string;
+  confidence: number;
+  sources_used: ClaimSource[];
+}
+
+// ---- Claim checker API response types ----
+
+export interface ClaimCheckerSuccessResponse {
+  claim: Claim;
+}
+
+export interface ClaimCheckerErrorResponse {
+  error: string;
+}

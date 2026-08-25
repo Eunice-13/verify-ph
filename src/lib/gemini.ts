@@ -9,7 +9,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { VERDICT_CATEGORIES } from "@/constants";
-import type { Article, GeminiVerdictResult } from "@/types";
+import type { DbArticle, GeminiVerdictResult } from "@/types";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -135,7 +135,7 @@ const VERDICT_RESULT_SCHEMA = {
 export async function generateVerdict(
   normalizedClaim: string,
   rawClaim: string,
-  evidence: Article[]
+  evidence: DbArticle[]
 ): Promise<GeminiVerdictResult> {
   const evidenceForPrompt = evidence.map((a) => ({
     id: a.id,

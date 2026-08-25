@@ -10,8 +10,10 @@ function requiredServerEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_
   return value;
 }
 
-// This client is for server routes only. Never import it into a browser
-// component or expose SUPABASE_SERVICE_ROLE_KEY with a NEXT_PUBLIC_ prefix.
+// ---------------------------------------------------------------------------
+// Server client (service-role key) — use in API routes and server components.
+// Never import into browser code.
+// ---------------------------------------------------------------------------
 export function createSupabaseServiceClient(): SupabaseClient {
   return createClient(
     requiredServerEnv("NEXT_PUBLIC_SUPABASE_URL"),
@@ -22,5 +24,18 @@ export function createSupabaseServiceClient(): SupabaseClient {
         persistSession: false,
       },
     },
+  );
+}
+
+/** Alias used by the claim-checker route and other server code. */
+export const supabaseServer = createSupabaseServiceClient;
+
+// ---------------------------------------------------------------------------
+// Browser client (anon key) — safe for client components.
+// ---------------------------------------------------------------------------
+export function createSupabaseBrowserClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 }

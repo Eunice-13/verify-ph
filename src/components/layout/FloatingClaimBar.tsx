@@ -2,12 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useAutoResizeTextarea } from "@/lib/useAutoResizeTextarea";
 import ClaimResult from "@/components/claim/ClaimResult";
-import { ClaimVerdictStatus } from "@/types";
-
-const CLAIM_VERDICT_STATES: ClaimVerdictStatus[] = ["VERIFIED", "CONTRADICTED", "INSUFFICIENT"];
+import { submitClaim } from "@/lib/claimChecker";
+import type { Claim } from "@/types";
 
 /**
  * Floating / locking claim-checker input bar shown on the home and feed
@@ -20,15 +19,15 @@ export default function FloatingClaimBar() {
 
   if (pathname === "/claim-check") return null;
 
-  // Remount on route change via `key` so all local state (input value,
-  // verdict, scroll-lock position) resets cleanly instead of needing an
-  // effect that synchronously calls setState on every navigation.
+  // Remount on route change via `key` so all local state resets cleanly.
   return <FloatingClaimBarContent key={pathname} />;
 }
 
 function FloatingClaimBarContent() {
   const [value, setValue] = useState("");
-  const [verdict, setVerdict] = useState<ClaimVerdictStatus | null>(null);
+  const [claim, setClaim] = useState<Claim | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [positionClass, setPositionClass] = useState("claim-bar-fixed");
   const { ref: textareaRef, resize } = useAutoResizeTextarea();
 
@@ -37,7 +36,7 @@ function FloatingClaimBarContent() {
       document.documentElement.scrollHeight - window.innerHeight - 160;
 
     const updatePosition = () => {
-      if (verdict) return; // showing a verdict: stay in normal document flow
+      if (claim) return; // showing a verdict: stay in normal document flow
       const shouldLock = window.scrollY >= lockThreshold();
       setPositionClass(shouldLock ? "claim-bar-locked" : "claim-bar-fixed");
     };
@@ -49,15 +48,29 @@ function FloatingClaimBarContent() {
       window.removeEventListener("scroll", updatePosition);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [verdict]);
+  }, [claim]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const next = CLAIM_VERDICT_STATES[Math.floor(Math.random() * CLAIM_VERDICT_STATES.length)];
-    setVerdict(next);
+    const text = value.trim();
+    if (!text || loading) return;
+
+    setLoading(true);
+    setError(null);
+    setClaim(null);
     setValue("");
-    setPositionClass("claim-bar-result");
     requestAnimationFrame(resize);
+
+    const result = await submitClaim(text);
+
+    setLoading(false);
+
+    if (result.success && result.claim) {
+      setClaim(result.claim);
+      setPositionClass("claim-bar-result");
+    } else {
+      setError(result.error ?? "Something went wrong.");
+    }
   };
 
   return (
@@ -76,17 +89,32 @@ function FloatingClaimBarContent() {
           }}
           placeholder="Paste a claim, headline, or link to fact-check…"
           className="flex-1 bg-transparent outline-none font-sans text-sm text-neutral-700 placeholder:text-neutral-400 resize-none max-h-40 overflow-y-auto leading-relaxed self-center"
+          disabled={loading}
         />
         <button
           type="submit"
           aria-label="Submit claim"
-          className="cursor-pointer shrink-0 w-8 h-8 rounded-full border border-neutral-300 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors self-center"
+          disabled={loading}
+          className="cursor-pointer shrink-0 w-8 h-8 rounded-full border border-neutral-300 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 transition-colors self-center disabled:opacity-50"
         >
-          <Plus className="w-4 h-4" />
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
         </button>
       </form>
+
       <div className="max-w-2xl mx-auto mt-3">
-        {verdict && <ClaimResult status={verdict} />}
+        {loading && (
+          <p className="text-center text-sm text-neutral-500 font-sans animate-pulse">
+            Checking claim against trusted sources…
+          </p>
+        )}
+        {error && (
+          <p className="text-center text-sm text-red-600 font-sans">{error}</p>
+        )}
+        {claim && <ClaimResult claim={claim} />}
       </div>
     </div>
   );

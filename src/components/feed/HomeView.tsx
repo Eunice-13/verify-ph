@@ -1,5 +1,5 @@
 import { CATEGORIES } from "@/types";
-import { getFeaturedArticle, getVerifiedArticles } from "@/lib/mockNews";
+import { fetchArticlesServer } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import ArticleSideCard from "@/components/feed/ArticleSideCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
@@ -9,14 +9,16 @@ import ClaimStats from "@/components/feed/ClaimStats";
 /**
  * Homepage view — mixed-category hero (2 small left + 1 large center + 3
  * side right), followed by a stacked row per category in CATEGORIES order.
+ *
+ * Fetches real articles from Supabase. Falls back gracefully to empty
+ * skeleton slots if the DB is empty or unavailable.
  */
-export default function HomeView() {
-  const featured = getFeaturedArticle();
-  const verified = getVerifiedArticles(null);
+export default async function HomeView() {
+  const allArticles = await fetchArticlesServer({ limit: 40 });
 
-  // Build a pool that excludes the hero article, then take 2 for the left
-  // column and 3 for the right column — mixed across categories.
-  const pool = verified.filter((a) => a.id !== featured?.id);
+  // The first article becomes the hero/featured; rest fill columns.
+  const featured = allArticles[0] ?? null;
+  const pool = allArticles.slice(1);
   const leftArticles = pool.slice(0, 2);
   const rightArticles = pool.slice(2, 5);
 
