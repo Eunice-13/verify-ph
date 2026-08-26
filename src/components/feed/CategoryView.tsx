@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Home } from "lucide-react";
 import { Article, Category } from "@/types";
 import { fetchArticlesClient } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
@@ -48,9 +49,10 @@ export default function CategoryView({ category }: { category: Category }) {
           </h1>
           <Link
             href="/"
-            className="cursor-pointer font-sans text-xs md:text-sm text-neutral-600 hover:text-emerald-800 transition-colors whitespace-nowrap"
+            aria-label="Back to home"
+            className="cursor-pointer shrink-0 w-9 h-9 rounded-full border border-neutral-300 flex items-center justify-center text-neutral-600 hover:bg-neutral-100 hover:text-emerald-800 transition-colors"
           >
-            Back -&gt;
+            <Home className="w-4 h-4" strokeWidth={2} />
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -87,7 +89,6 @@ export default function CategoryView({ category }: { category: Category }) {
           </p>
         )}
       </section>
-      <div id="claim-bar-spacer" className="h-28" />
     </>
   );
 }

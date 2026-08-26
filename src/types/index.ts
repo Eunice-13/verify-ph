@@ -27,7 +27,7 @@ export type ArticleStatus = "VERIFIED" | "PENDING";
  * editorially-flagged "most relevant today" boolean.
  */
 export interface Article {
-  id: number;
+  id: string | number;
   category: Category;
   title: string;
   excerpt: string;
@@ -37,6 +37,9 @@ export interface Article {
   featured?: boolean;
   sourceUrl?: string;
   providerName?: string;
+  /** Real image sourced from the original publisher (via RSS enclosure/content).
+   * Null/undefined when the source article has no extractable image. */
+  imageUrl?: string | null;
 }
 
 /** Possible verdict states returned by the (placeholder) Claim Checker. */

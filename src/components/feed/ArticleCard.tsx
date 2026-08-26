@@ -30,7 +30,7 @@ export default function ArticleCard({
         className={`block rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)] ${imgHeightClass} relative`}
       >
         <Image
-          src={placeholderImage(article.id)}
+          src={article.imageUrl ?? placeholderImage(article.id)}
           alt={article.title}
           fill
           loading="lazy"
@@ -61,20 +61,19 @@ export default function ArticleCard({
         </p>
       </div>
 
-      {/* Hover popup: verified status + full headline + provider */}
+      {/* Hover overlay: verified icon + Read Article, bottom-right */}
       <div
-        className={`pointer-events-none absolute inset-x-0 top-0 ${imgHeightClass} z-20 flex flex-col justify-end
-               rounded-xl bg-gradient-to-t from-black/90 via-black/50 to-black/10 p-4 opacity-0 scale-[0.98]
+        className={`pointer-events-none absolute inset-x-0 top-0 ${imgHeightClass} z-20 flex flex-col items-end justify-end
+               rounded-xl bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 scale-[0.98]
                transition-all duration-[400ms] ease-in-out group-hover:opacity-100 group-hover:scale-100`}
       >
-        <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-sans font-semibold uppercase tracking-wide text-white mb-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-sans font-semibold uppercase tracking-wide text-white mb-2">
           <Check className="w-3 h-3" strokeWidth={2.5} />
           Verified
         </span>
-        <h4 className="font-serif font-bold text-white text-sm md:text-base leading-snug mb-1">
-          {article.title}
-        </h4>
-        <p className="text-[11px] font-sans text-white/80">{provider}</p>
+        <span className="font-sans font-semibold text-white text-sm tracking-wide">
+          Read Article
+        </span>
       </div>
     </div>
   );

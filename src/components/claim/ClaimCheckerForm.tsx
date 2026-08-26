@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { FormEvent, KeyboardEvent, useState } from "react";
+import { Send, Loader2 } from "lucide-react";
 import { useAutoResizeTextarea } from "@/lib/useAutoResizeTextarea";
 import ClaimResult from "@/components/claim/ClaimResult";
+import ClaimProgress from "@/components/claim/ClaimProgress";
 import { submitClaim } from "@/lib/claimChecker";
 import type { Claim } from "@/types";
 
@@ -42,6 +43,19 @@ export default function ClaimCheckerForm() {
 
   return (
     <>
+      <div className="w-full">
+        {error && (
+          <p className="text-center text-sm text-red-600 font-sans mb-6">{error}</p>
+        )}
+        {claim && (
+          <div className="mt-10">
+            <ClaimResult claim={claim} />
+          </div>
+        )}
+      </div>
+
+      {loading && <ClaimProgress />}
+
       <form
         onSubmit={handleSubmit}
         className="flex items-center gap-3 bg-white rounded-3xl border-2 border-transparent shadow-sm px-6 py-4 max-w-2xl w-full mx-auto claim-input-wrap transition-all duration-200"
@@ -53,6 +67,12 @@ export default function ClaimCheckerForm() {
           onChange={(e) => {
             setValue(e.target.value);
             resize();
+          }}
+          onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }
           }}
           placeholder="Paste a claim, headline, or link to fact-check…"
           className="flex-1 bg-transparent outline-none font-sans text-neutral-700 placeholder:text-neutral-400 resize-none max-h-60 overflow-y-auto leading-relaxed self-center"
@@ -67,22 +87,10 @@ export default function ClaimCheckerForm() {
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Plus className="w-4 h-4" />
+            <Send className="w-4 h-4" />
           )}
         </button>
       </form>
-
-      <div className="w-full">
-        {loading && (
-          <p className="text-center text-sm text-neutral-500 font-sans animate-pulse mt-8">
-            Analyzing claim against verified Philippine news sources…
-          </p>
-        )}
-        {error && (
-          <p className="text-center text-sm text-red-600 font-sans mt-6">{error}</p>
-        )}
-        {claim && <ClaimResult claim={claim} />}
-      </div>
     </>
   );
 }

@@ -57,6 +57,46 @@ body {
   box-shadow: 0 0 0 4px rgba(6, 95, 70, 0.3), 0 0 18px rgba(6, 95, 70, 0.5);
 }
 
+/* ---- Claim verification progress bar (bold, vibrant animated) ---- */
+.claim-progress-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 9999px;
+  background: rgba(6, 95, 70, 0.12);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.claim-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #10b981, #059669, #047857);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6), 0 0 16px rgba(5, 150, 105, 0.3);
+  animation: claim-progress-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes claim-progress-slide {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claim-progress-fill {
+    animation: none;
+    left: 0;
+    width: 100%;
+  }
+}
+
 /* ---- Floating / locking claim-checker bar (home + category pages) ----
    Follows the viewport (fixed, centered) while scrolling, then locks into
    an absolute position within the document once the user nears the bottom
@@ -79,29 +119,136 @@ body {
   bottom: 7rem;
 }
 
-/* ---- Floating bar while showing a verdict: drop out of fixed/locked
-   positioning and sit in normal document flow (like the Claim Checker
-   page's own result), so the verdict card pushes the page instead of
-   overlapping it or clipping off-screen. ---- */
-#floating-claim-bar.claim-bar-result {
-  position: static;
-  bottom: auto;
-  margin: 2rem 0;
+/* ---- Claim result modal/overlay: centered vertically between the
+   navbar+subnav and the bottom of the viewport with equal spacing. ---- */
+.claim-modal-backdrop {
+  position: fixed;
+  top: 7.5rem; /* below Header (h-16 = 4rem) + SubNav (h-14 = 3.5rem) */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  animation: claim-modal-fade-in 200ms ease-out;
 }
 
-/* ---- Footer: hidden until the user reaches the very bottom of the page ---- */
-#site-footer.footer-hidden {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(12px);
-  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out, visibility 0s 400ms;
+.claim-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 42rem;
+  max-height: calc(100vh - 7.5rem - 4rem); /* viewport minus navbar+subnav minus padding */
+  overflow-y: auto;
+  background: #f4f1ea;
+  border-radius: 1.5rem;
+  padding: 2.5rem 1.5rem 2rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  animation: claim-modal-slide-up 220ms ease-out;
+  scrollbar-width: thin; /* Firefox: slim track, no arrow buttons by default */
 }
 
-#site-footer.footer-visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
+/* Chromium/Edge/Safari: slim scrollbar with no up/down arrow buttons —
+   only appears at all when .claim-modal-panel content actually overflows,
+   since overflow-y is auto rather than scroll. */
+.claim-modal-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.claim-modal-panel::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+.claim-modal-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.claim-modal-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 9999px;
+}
+
+.claim-modal-panel::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+@keyframes claim-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes claim-modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claim-modal-backdrop,
+  .claim-modal-panel {
+    animation: none;
+  }
+}
+
+/* ---- Footer: animated sliding news source logos (infinite seamless) ---- */
+.source-logos-track {
+  animation: source-logos-scroll 25s linear infinite;
+}
+
+.source-logo-item {
+  opacity: 0.4;
+  animation: source-logo-glow 4.2s ease-in-out infinite;
+}
+
+/* Stagger the glow so brightness flows left-to-right across ~3 visible items */
+.source-logo-item:nth-child(7n + 1) { animation-delay: 0s; }
+.source-logo-item:nth-child(7n + 2) { animation-delay: 0.6s; }
+.source-logo-item:nth-child(7n + 3) { animation-delay: 1.2s; }
+.source-logo-item:nth-child(7n + 4) { animation-delay: 1.8s; }
+.source-logo-item:nth-child(7n + 5) { animation-delay: 2.4s; }
+.source-logo-item:nth-child(7n + 6) { animation-delay: 3.0s; }
+.source-logo-item:nth-child(7n + 7) { animation-delay: 3.6s; }
+
+@keyframes source-logos-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes source-logo-glow {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  30%, 50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-logos-track {
+    animation: none;
+  }
+  .source-logo-item {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 /* ---- Minimal green scrollbar that blends into the page ---- */
@@ -128,4 +275,10 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #33604a;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }

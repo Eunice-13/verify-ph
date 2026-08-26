@@ -34,9 +34,19 @@ type ParsedRssItem = {
     url?: string;
   };
   categories?: string[];
+  /** Media RSS (http://search.yahoo.com/mrss/) image fields — captured via
+   * the parser's customFields config below since rss-parser doesn't expose
+   * these by default. Value shape varies: some feeds emit an attribute
+   * (`$.url`), others wrap the tag's own CDATA/text content instead. */
+  "media:content"?: { $?: { url?: string }; _?: string } | string;
+  "media:thumbnail"?: { $?: { url?: string }; _?: string } | string;
 };
 
-const parser = new Parser();
+const parser = new Parser<Record<string, unknown>, ParsedRssItem>({
+  customFields: {
+    item: ["media:content", "media:thumbnail"],
+  },
+});
 
 /** Runs `items` through `worker` with at most `concurrency` in flight at once. */
 async function runWithConcurrency<T>(
@@ -230,9 +240,28 @@ function imageUrlFromContent(content: string | undefined): string | null {
   return toHttpUrl(match?.[1]);
 }
 
+/** Extracts a usable image URL out of a Media RSS field, which rss-parser
+ * may hand back either as `{ $: { url } }` (attribute form) or as a plain
+ * string/CDATA blob that itself contains an `<img src="...">` tag. */
+function imageUrlFromMediaField(
+  field: { $?: { url?: string }; _?: string } | string | undefined,
+): string | null {
+  if (!field) {
+    return null;
+  }
+
+  if (typeof field === "string") {
+    return toHttpUrl(field) ?? imageUrlFromContent(field);
+  }
+
+  return toHttpUrl(field.$?.url) ?? imageUrlFromContent(field._);
+}
+
 function imageUrlFromItem(item: ParsedRssItem): string | null {
   return (
     toHttpUrl(item.enclosure?.url) ??
+    imageUrlFromMediaField(item["media:content"]) ??
+    imageUrlFromMediaField(item["media:thumbnail"]) ??
     imageUrlFromContent(item.content) ??
     imageUrlFromContent(item["content:encoded"])
   );

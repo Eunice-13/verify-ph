@@ -16,7 +16,7 @@ export default function ArticleSideCard({ article }: { article: Article }) {
         className="relative block w-24 h-20 shrink-0 rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
       >
         <Image
-          src={placeholderImage(article.id)}
+          src={article.imageUrl ?? placeholderImage(article.id)}
           alt={article.title}
           fill
           loading="lazy"

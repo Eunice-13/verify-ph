@@ -67,8 +67,6 @@ export default async function HomeView() {
       ))}
 
       <ClaimStats />
-
-      <div id="claim-bar-spacer" className="h-28" />
     </>
   );
 }

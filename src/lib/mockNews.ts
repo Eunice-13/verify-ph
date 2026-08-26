@@ -13,7 +13,7 @@
 import { Article, Category } from "@/types";
 
 /** Deterministic placeholder photo per article id (picsum.photos seeded service). */
-export function placeholderImage(id: number, width = 800, height = 600): string {
+export function placeholderImage(id: string | number, width = 800, height = 600): string {
   return `https://picsum.photos/seed/verifyph-${id}/${width}/${height}`;
 }
 
@@ -27,12 +27,13 @@ const PLACEHOLDER_PROVIDERS = [
   "National Wire PH",
 ];
 
-export function placeholderProviderName(id: number): string {
-  return PLACEHOLDER_PROVIDERS[id % PLACEHOLDER_PROVIDERS.length];
+export function placeholderProviderName(id: string | number): string {
+  const numId = typeof id === "string" ? id.charCodeAt(0) : id;
+  return PLACEHOLDER_PROVIDERS[numId % PLACEHOLDER_PROVIDERS.length];
 }
 
 /** Deterministic placeholder outbound source link per article id, until real source data exists. */
-export function placeholderSourceUrl(id: number): string {
+export function placeholderSourceUrl(id: string | number): string {
   return `https://example-news-provider.ph/article/${id}`;
 }
 
