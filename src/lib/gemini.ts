@@ -27,6 +27,16 @@ export interface ParsedClaim {
   search_query: string;
   /** One-sentence neutral restatement of the claim being checked. */
   normalized_claim: string;
+  /** Location names/places mentioned in the claim (empty array if none). */
+  location_keywords: string[];
+  /** Event/action terms describing what happened (empty array if none). */
+  event_keywords: string[];
+  /** Named entities: people, organizations, agencies (empty array if none). */
+  entity_keywords: string[];
+  /** The date the claim asserts the event happened, if stated or clearly
+   * implied (e.g. "yesterday", "last week"), normalized to ISO 8601 date
+   * (YYYY-MM-DD). Null if the claim doesn't reference a specific time. */
+  claimed_date: string | null;
 }
 
 const PARSE_CLAIM_SCHEMA = {
@@ -42,8 +52,31 @@ const PARSE_CLAIM_SCHEMA = {
       description:
         "A single neutral sentence restating the core factual claim being checked, stripped of social-media framing/emotion.",
     },
+    location_keywords: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Place names mentioned in the claim (cities, provinces, regions, landmarks), expanded to full form (e.g. 'PH' -> 'Philippines', 'QC' -> 'Quezon City'). Empty array if the claim mentions no specific place.",
+    },
+    event_keywords: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Words describing what happened or is being claimed (e.g. 'flood', 'evacuate', 'ranked', 'allocated', 'signed'). Empty array if none.",
+    },
+    entity_keywords: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Named people, organizations, or government agencies mentioned in the claim, expanded to full form where a common abbreviation is used (e.g. 'DOH' -> 'Department of Health'). Empty array if none.",
+    },
+    claimed_date: {
+      type: Type.STRING,
+      description:
+        "The date the claim asserts the event happened, as YYYY-MM-DD, if stated or clearly implied by relative terms like 'yesterday' or 'last week'. Use an empty string if the claim references no specific time.",
+    },
   },
-  required: ["search_query", "normalized_claim"],
+  required: ["search_query", "normalized_claim", "location_keywords", "event_keywords", "entity_keywords", "claimed_date"],
 };
 
 /**
@@ -51,6 +84,8 @@ const PARSE_CLAIM_SCHEMA = {
  * Accepts either raw claim text or a social media link/quote pasted by the user.
  */
 export async function parseClaim(rawClaim: string): Promise<ParsedClaim> {
+  const today = new Date().toISOString().slice(0, 10);
+
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: [
@@ -59,8 +94,10 @@ export async function parseClaim(rawClaim: string): Promise<ParsedClaim> {
         parts: [
           {
             text: `You are a claim-parsing assistant for VerifyPH, a Philippine fact-checking tool.
-A user pasted the following claim (it may be plain text, or text copied from a social media post/link). 
-Extract a concise search query and a neutral one-sentence restatement.
+A user pasted the following claim (it may be plain text, or text copied from a social media post/link, and may mix English and Filipino/Tagalog).
+Extract a concise search query, a neutral one-sentence restatement, and categorized keywords.
+
+Today's date is ${today}. If the claim references a relative date ("yesterday", "last week", "kagabi"), resolve it to an actual YYYY-MM-DD date using today's date as the reference point.
 
 Claim:
 """
@@ -82,7 +119,11 @@ ${rawClaim}
     throw new Error("Gemini returned an empty response while parsing the claim.");
   }
 
-  return JSON.parse(text) as ParsedClaim;
+  const parsed = JSON.parse(text) as ParsedClaim & { claimed_date: string };
+  return {
+    ...parsed,
+    claimed_date: parsed.claimed_date ? parsed.claimed_date : null,
+  };
 }
 
 /**
@@ -269,7 +310,8 @@ export async function generateVerdict(
   normalizedClaim: string,
   rawClaim: string,
   evidence: DbArticle[],
-  externalEvidence: ExternalEvidence[] = []
+  externalEvidence: ExternalEvidence[] = [],
+  claimedDate: string | null = null
 ): Promise<GeminiVerdictResult> {
   const evidenceForPrompt = [
     ...evidence.map((a) => ({
@@ -310,6 +352,13 @@ export async function generateVerdict(
 5. If no retrieved article is actually relevant to the claim, you MUST return "Insufficient Evidence" and leave sources_used empty.
 6. "sources_used" must be a subset of the articles provided below (same id/title/source_url) — only include ones you actually relied on. Carry over "is_external" for each source you include.
 7. Be neutral and evidence-first. Do not act as an arbiter of absolute truth; describe what the evidence shows or does not show.
+
+NUMERIC TOLERANCE POLICY: When the claim cites a figure (amount, percentage, count) and the evidence cites a close but not identical figure, treat differences within about 5% (or normal rounding, e.g. "P7 billion" vs "P7.2 billion", "over 60" vs "62") as still "Verified" — call this out in the explanation as an approximate match rather than an exact one. Only mark "Contradicted" if the figures are materially different (e.g. off by more than roughly 10%, or an order of magnitude, or a different unit entirely) such that the claim's substance is actually wrong. If the evidence gives no figure to compare against, that fact alone doesn't necessarily block a "Verified" verdict — judge based on whether the core event/fact is confirmed.
+
+DATE AWARENESS: Compare the date/time the claim asserts something happened (if any) against each article's published_at. A common Philippine misinformation pattern is resharing an old, real event as if it just happened. If the evidence article reports a genuinely real event, but its published_at is significantly earlier than what the claim implies (e.g. the claim implies "today"/"this week" but the article is from months or years ago), explicitly flag this in ai_explanation as a likely outdated/recycled repost rather than treating it as a fresh confirmation — still choose the closest of the three verdict labels (usually "Contradicted" if the claim asserts recency as part of its substance, or "Verified" with a caveat if recency isn't essential to the claim), but the explanation must clearly state the date mismatch so a reader isn't misled about how current the story actually is.
+${claimedDate ? `\nThe claim appears to assert this happened around: ${claimedDate}. Weigh this against each article's published_at as described above.` : ""}
+
+EVIDENCE QUALITY: In ai_explanation, quote or closely paraphrase the specific sentence/fact from the evidence that supports your verdict (not just the article title), and always mention which source (source_name) it came from. For every entry in sources_used, the source_url must be included and must be copied exactly from the evidence list below — never shorten, guess, or reconstruct a URL.
 
 User's original pasted claim:
 """
