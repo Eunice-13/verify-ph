@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces } from "next/font/google";
+import { Suspense } from "react";
 import Header from "@/components/layout/Header";
 import SubNav from "@/components/layout/SubNav";
 import Footer from "@/components/layout/Footer";
@@ -33,8 +34,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <style>{`:root { --font-open-sauce: "Open Sauce One"; }`}</style>
       </head>
       <body className="min-h-full flex flex-col bg-[#f4f1ea] font-sans text-neutral-800">
-        <Header />
-        <SubNav />
+        <Suspense fallback={null}>
+          <Header />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SubNav />
+        </Suspense>
         {children}
         <FloatingClaimBar />
         <Footer />

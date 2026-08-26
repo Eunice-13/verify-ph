@@ -22,7 +22,7 @@ export default function NewspaperReveal() {
   return (
     <section className="relative max-w-3xl mx-auto px-6 py-16 text-center">
       <p className="font-sans text-xs uppercase tracking-[0.25em] text-emerald-400 mb-6">
-        Stop the Presses
+        Breaking News!
       </p>
 
       <AnimatePresence>
@@ -83,7 +83,7 @@ export default function NewspaperReveal() {
       </AnimatePresence>
 
       <p className="mt-6 font-serif text-sm text-white/60">
-        {isOpen ? "" : "A folded front page, waiting to break the story."}
+        {isOpen ? "" : "Unfold the truth today. Put an end to the cycle of lies."}
       </p>
 
       <AnimatePresence>

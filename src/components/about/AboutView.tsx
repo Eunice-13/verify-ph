@@ -120,7 +120,7 @@ const STAT_FILLERS: { words: string; placementClass: string }[] = [
  */
 const PILLARS: PillarData[] = [
   {
-    emoji: "🏛️",
+    emoji: "",
     title: "Democracy on the Ballot",
     hook: "Elections",
     body: "Micro-targeted smear campaigns and troll networks manipulate voters at scale.",
@@ -129,7 +129,7 @@ const PILLARS: PillarData[] = [
     imageSeed: "verifyph-about-pillar-democracy",
   },
   {
-    emoji: "🏥",
+    emoji: "",
     title: "Infodemics Kill",
     hook: "Public Health",
     body: "Health misinformation delays care and fuels vaccine hesitancy nationwide.",
@@ -138,7 +138,7 @@ const PILLARS: PillarData[] = [
     imageSeed: "verifyph-about-pillar-health",
   },
   {
-    emoji: "💼",
+    emoji: "",
     title: "Scammed in Seconds",
     hook: "10,004 Cases",
     body: "AI deepfakes and fake shops cost Filipinos ₱198M in a single record year.",
@@ -373,7 +373,7 @@ export default function AboutView() {
           variants={fadeUpItem}
           className="font-serif font-bold text-2xl md:text-3xl text-neutral-900 text-center mb-9"
         >
-          The Damage, Verified.
+          The Damage, Exposed.
         </motion.h3>
 
         <div className="grid grid-cols-1 md:grid-cols-4 md:auto-rows-[minmax(150px,1fr)] gap-4">

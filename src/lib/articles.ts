@@ -33,7 +33,7 @@ export const UI_TO_DB_CATEGORY: Record<Category, ArticleCategory> = {
 
 function dbArticleToFrontEnd(row: DbArticle): Article {
   return {
-    id: typeof row.id === "string" ? parseInt(row.id, 10) || 0 : Number(row.id),
+    id: row.id,
     category: DB_TO_UI_CATEGORY[row.category] ?? "GENERAL",
     title: row.title,
     excerpt: row.summary ?? "",
@@ -48,6 +48,7 @@ function dbArticleToFrontEnd(row: DbArticle): Article {
     status: "VERIFIED",
     sourceUrl: row.source_url,
     providerName: row.source_name,
+    imageUrl: row.image_url,
   };
 }
 

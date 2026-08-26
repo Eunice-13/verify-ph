@@ -76,7 +76,7 @@ export default function ClaimResult({ claim }: { claim: Claim }) {
   const sources = (claim.sources_used ?? []) as ClaimSource[];
 
   return (
-    <div className="mt-10 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       {/* Verdict badge */}
       <div
         className={`inline-flex items-center gap-3 rounded-full ${style.badgeClass} border-2 text-white font-sans font-bold text-sm md:text-base px-6 py-3 shadow-[0_6px_16px_rgba(0,0,0,0.18)]`}
@@ -104,7 +104,7 @@ export default function ClaimResult({ claim }: { claim: Claim }) {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {sources.map((source, i) => (
-              <SourceCard key={source.article_id ?? i} source={source} />
+              <SourceCard key={`${source.article_id}-${i}`} source={source} />
             ))}
           </div>
         </div>

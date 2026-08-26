@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ShieldCheck, Menu } from "lucide-react";
 import { CATEGORIES } from "@/types";
@@ -21,6 +22,9 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeCategory = pathname === "/feed" ? searchParams.get("category") : null;
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -110,23 +114,24 @@ export default function Header() {
                 >
                   Claim Checker
                 </Link>
-                <Link
-                  href="/about"
-                  onClick={closeDropdown}
-                  className="cursor-pointer block w-full text-left px-4 py-2 font-serif font-bold text-sm hover:bg-neutral-100"
-                >
-                  Why Verification Matters
-                </Link>
-                {CATEGORIES.map((category) => (
-                  <Link
-                    key={category}
-                    href={`/feed?category=${encodeURIComponent(category)}`}
-                    onClick={closeDropdown}
-                    className="cursor-pointer block w-full text-left px-4 py-2 font-serif font-bold text-sm hover:bg-neutral-100"
-                  >
-                    {CATEGORY_LABELS[category]}
-                  </Link>
-                ))}
+                {CATEGORIES.map((category) => {
+                  const isActive = category === activeCategory;
+                  return (
+                    <Link
+                      key={category}
+                      href={`/feed?category=${encodeURIComponent(category)}`}
+                      onClick={closeDropdown}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`cursor-pointer block w-full text-left px-4 py-2 font-serif font-bold text-sm hover:bg-neutral-100 border-b-2 ${
+                        isActive
+                          ? "text-emerald-900 border-emerald-700"
+                          : "border-transparent"
+                      }`}
+                    >
+                      {CATEGORY_LABELS[category]}
+                    </Link>
+                  );
+                })}
                 <div className="mt-2 pt-2 border-t border-neutral-200 px-4 flex items-center gap-3 text-neutral-500">
                   <a
                     href="#"
@@ -170,6 +175,14 @@ export default function Header() {
                     — Support VerifyPH
                   </span>
                 </div>
+                <Link
+                  href="/about"
+                  onClick={closeDropdown}
+                  aria-current={pathname === "/about" ? "page" : undefined}
+                  className="cursor-pointer mt-2 -mb-2 block w-full text-center px-4 py-3 font-serif font-bold text-sm bg-emerald-900 text-white hover:bg-emerald-800 transition-colors rounded-b-xl"
+                >
+                  Why Verification Matters
+                </Link>
               </div>
             )}
           </div>
