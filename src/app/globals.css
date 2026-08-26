@@ -104,6 +104,85 @@ body {
   transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
 }
 
+/* ---- About page: pillar card hover shimmer ----
+   A soft diagonal mesh-gradient sheen that fades in behind a pillar card on
+   hover/focus (see AboutView.tsx), reusing the emerald accent instead of
+   introducing a new palette. ---- */
+.pillar-shimmer {
+  background: radial-gradient(
+    circle at 30% 20%,
+    rgba(6, 95, 70, 0.14),
+    transparent 60%
+  );
+}
+
+/* ---- About page: virality pipeline connector particle ----
+   A single glowing dot that loops left-to-right along the connector line
+   between pipeline steps, suggesting the "cycle repeats" narrative. ---- */
+.flow-particle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  background: #059669; /* emerald-600 */
+  box-shadow: 0 0 10px 3px rgba(5, 150, 105, 0.6);
+  animation: flow-particle-move 3.5s linear infinite;
+}
+
+@keyframes flow-particle-move {
+  from {
+    left: 0%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-particle {
+    animation: none;
+    display: none;
+  }
+}
+
+/* ---- About page: horizontal keyword ticker ----
+   A seamless, infinitely-looping marquee of misinformation-related keywords
+   used to add ambient motion + texture in tight vertical space (hero strip).
+   Content is duplicated in the component so the -50% translate loop has no
+   visible seam. ---- */
+.keyword-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: keyword-ticker-scroll 26s linear infinite;
+}
+
+@keyframes keyword-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyword-ticker-track {
+    animation: none;
+  }
+}
+
+/* ---- About page: decorative newspaper column-rule lines ----
+   Faux body-text lines inside the closing "newspaper" reveal — purely
+   decorative, evokes a printed column without real placeholder copy. ---- */
+.newspaper-rule-line {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(6, 95, 70, 0.14);
+}
+
 /* ---- Minimal green scrollbar that blends into the page ---- */
 html {
   scrollbar-width: thin;

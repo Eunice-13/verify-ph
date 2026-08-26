@@ -12,12 +12,13 @@ import type { Claim } from "@/types";
  * Floating / locking claim-checker input bar shown on the home and feed
  * (category) pages. Follows the viewport while scrolling, then locks in
  * place near the bottom of the document so it never overlaps the footer.
- * Hidden entirely on the dedicated Claim Checker page.
+ * Hidden entirely on the dedicated Claim Checker page and the Awareness
+ * ("Why Verification Matters") page, which has its own dedicated CTAs.
  */
 export default function FloatingClaimBar() {
   const pathname = usePathname();
 
-  if (pathname === "/claim-check") return null;
+  if (pathname === "/claim-check" || pathname === "/about") return null;
 
   // Remount on route change via `key` so all local state resets cleanly.
   return <FloatingClaimBarContent key={pathname} />;

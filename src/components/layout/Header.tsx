@@ -110,6 +110,13 @@ export default function Header() {
                 >
                   Claim Checker
                 </Link>
+                <Link
+                  href="/about"
+                  onClick={closeDropdown}
+                  className="cursor-pointer block w-full text-left px-4 py-2 font-serif font-bold text-sm hover:bg-neutral-100"
+                >
+                  Why Verification Matters
+                </Link>
                 {CATEGORIES.map((category) => (
                   <Link
                     key={category}
