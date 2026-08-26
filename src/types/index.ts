@@ -86,6 +86,14 @@ export interface TrustedRssSource {
   fallbackCategory: ArticleCategory;
 }
 
+/** A trusted Philippine news outlet the AI is allowed to cite when falling
+ * back to a live web search (used when the claim isn't covered by any
+ * article already ingested into our own database). */
+export interface TrustedWebSource {
+  name: string;
+  domain: string;
+}
+
 /** Per-source result returned after ingesting a single feed. */
 export interface SourceIngestionResult {
   sourceId: string;
@@ -114,7 +122,9 @@ export interface IngestionResult {
 
 // ---- Database row types (Supabase `articles` / `claims` tables) ----
 
-/** A row from the Supabase `articles` table (as returned by select("*")). */
+/** A row from the Supabase `articles` table (metadata columns only — see
+ * ARTICLE_COLUMNS in src/lib/supabase.ts; excludes the `embedding` vector
+ * column, which normal queries never select). */
 export interface DbArticle {
   id: string;
   title: string;
@@ -140,6 +150,9 @@ export interface ClaimSource {
   source_url: string;
   published_at: string;
   relevance?: string;
+  /** True if this source came from a live trusted-web-source search rather
+   * than our own curated articles database. */
+  is_external?: boolean;
 }
 
 /** A row from the Supabase `claims` table. */

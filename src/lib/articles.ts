@@ -61,7 +61,7 @@ export async function fetchArticlesServer(options?: {
   offset?: number;
 }): Promise<Article[]> {
   // Dynamic import to avoid bundling the service-role key in client bundles.
-  const { createSupabaseServiceClient } = await import("@/lib/supabase");
+  const { createSupabaseServiceClient, ARTICLE_COLUMNS } = await import("@/lib/supabase");
   const supabase = createSupabaseServiceClient();
 
   const limit = options?.limit ?? 20;
@@ -69,7 +69,7 @@ export async function fetchArticlesServer(options?: {
 
   let query = supabase
     .from("articles")
-    .select("*")
+    .select(ARTICLE_COLUMNS)
     .order("published_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

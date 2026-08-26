@@ -31,6 +31,18 @@ export function createSupabaseServiceClient(): SupabaseClient {
 export const supabaseServer = createSupabaseServiceClient;
 
 // ---------------------------------------------------------------------------
+// Shared column list for `public.articles` queries.
+//
+// Explicit metadata columns only — deliberately excludes `embedding`
+// (vector(768), added by supabase/migrations/20260826102729_add_article_embeddings.sql).
+// Every normal feed/claim-checker query should select this constant rather
+// than "*", so the embedding vector is never fetched, serialized, or
+// returned in any API response by accident.
+// ---------------------------------------------------------------------------
+export const ARTICLE_COLUMNS =
+  "id, title, summary, source_url, source_name, published_at, category, image_url, created_at";
+
+// ---------------------------------------------------------------------------
 // Browser client (anon key) — safe for client components.
 // ---------------------------------------------------------------------------
 export function createSupabaseBrowserClient() {
