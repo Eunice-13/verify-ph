@@ -1,0 +1,157 @@
+{
+  "description": "Small labeled eval set for the VerifyPH claim-checker. Each entry pairs a test claim with the expected verdict and (if applicable) the specific article that should back it up. Used by scripts/run-eval.mjs to separate retrieval failures (the right article never surfaces as a candidate) from reasoning failures (the right article surfaces, but Gemini still reaches the wrong verdict). Grow this list over time as new failure cases are found — 20 cases is a starting point, not a target size.",
+  "cases": [
+    {
+      "id": "exact-01",
+      "category": "exact_match",
+      "claim": "Moody's Ratings says the Philippines' medium-term growth outlook is bleak due to slow investment recovery and vulnerability to climate-driven shocks.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "f9d38526-103b-4675-a917-fc23e5763785",
+      "notes": "Near-verbatim restatement of the article summary. Should be an easy retrieval + reasoning case."
+    },
+    {
+      "id": "exact-02",
+      "category": "exact_match",
+      "claim": "The Philippines ranked 66th out of 192 economies in the inaugural Rumavi Global Relocation Index 2026.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "6cb1b9ce-98e2-49ac-8b2f-34877a15c55e",
+      "notes": "Exact figures match. Baseline sanity check."
+    },
+    {
+      "id": "paraphrase-01",
+      "category": "paraphrase",
+      "claim": "A Wall Street ratings agency thinks the Philippine economy probably won't grow faster than 6% for a while, citing weak investment and climate risk.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "f9d38526-103b-4675-a917-fc23e5763785",
+      "notes": "Heavily paraphrased, no shared literal terms with 'Moody's Ratings' or 'medium-term growth outlook'. This is the case keyword matching alone is expected to fail on - tests whether semantic/embedding search (once the pgvector migration is applied) surfaces the right article when keyword search does not."
+    },
+    {
+      "id": "paraphrase-02",
+      "category": "paraphrase",
+      "claim": "OCBC now expects the Philippine economy to be one of the slowest-growing in Southeast Asia's five biggest economies over the next couple of years.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "33ce12b9-07b8-4e47-9a5d-8bd79a0ce61d",
+      "notes": "Paraphrase of 'PHL growth likely to be second weakest among ASEAN-5 through 2027'. Same purpose as paraphrase-01."
+    },
+    {
+      "id": "contradicted-01",
+      "category": "contradicted",
+      "claim": "Moody's Ratings projects the Philippines will comfortably exceed 6% growth in the medium term, citing strong investment recovery and resilience to climate shocks.",
+      "expected_verdict": "Contradicted",
+      "expected_article_id": "f9d38526-103b-4675-a917-fc23e5763785",
+      "notes": "Opposite of exact-01. Confirmed working in earlier manual testing this session."
+    },
+    {
+      "id": "contradicted-02",
+      "category": "contradicted",
+      "claim": "The Department of Energy has decided consumers must continue shouldering the full cost of electricity theft and illegal connections indefinitely, with no plan to allocate government funds for it.",
+      "expected_verdict": "Contradicted",
+      "expected_article_id": "a3e2584c-1407-4524-ab99-6751aced20c1",
+      "notes": "Opposite of the DOE non-technical-loss removal plan article."
+    },
+    {
+      "id": "unrelated-01",
+      "category": "unrelated",
+      "claim": "I have a house",
+      "expected_verdict": "Insufficient Evidence",
+      "expected_article_id": null,
+      "notes": "No genuine news claim at all. Confirmed working repeatedly this session."
+    },
+    {
+      "id": "unrelated-02",
+      "category": "unrelated",
+      "claim": "My favorite color is blue and I like pizza.",
+      "expected_verdict": "Insufficient Evidence",
+      "expected_article_id": null,
+      "notes": "Second unrelated-claim case for redundancy, different phrasing/topic than unrelated-01."
+    },
+    {
+      "id": "numeric-tolerance-01",
+      "category": "numeric_tolerance",
+      "claim": "The Philippine government is allocating around P7.2 billion to eliminate nontechnical electricity system losses.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "53ea4e54-2e95-445f-a28e-9fe9e9ea22d5",
+      "notes": "Article says P7.5 billion; claim says P7.2 billion (~4% difference). Tests the numeric tolerance policy added to generateVerdict's prompt - should still be Verified as an approximate match, not Contradicted."
+    },
+    {
+      "id": "numeric-tolerance-02",
+      "category": "numeric_tolerance",
+      "claim": "The Philippine government is allocating around P15 billion to eliminate nontechnical electricity system losses.",
+      "expected_verdict": "Contradicted",
+      "expected_article_id": "53ea4e54-2e95-445f-a28e-9fe9e9ea22d5",
+      "notes": "Article says P7.5 billion; claim says P15 billion (roughly double / ~100% off). This is materially different, not a rounding difference - should be Contradicted, testing that the tolerance policy doesn't make the model too lenient."
+    },
+    {
+      "id": "taglish-01",
+      "category": "taglish",
+      "claim": "May baha sa PH ngayong Habagat season, marami ang na-evacuate.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "3e23ecf1-0a9b-4919-affb-7b5d5579f9ca",
+      "notes": "Mixed Tagalog/English claim using 'baha' (flood) and 'PH'. Tests Taglish synonym expansion in the retrieval fallback."
+    },
+    {
+      "id": "taglish-02",
+      "category": "taglish",
+      "claim": "Anim na tao ang namatay dahil sa Bagyong Luis at Maymay, Habagat.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "c8cc8ef1-cb44-414b-8106-7edced43cdff",
+      "notes": "Fully Tagalog claim ('namatay' -> died/death). Tests Taglish synonym coverage for casualty-reporting claims, a common PH misinformation topic."
+    },
+    {
+      "id": "categorized-location-only-01",
+      "category": "entity_disambiguation",
+      "claim": "Romblon hosted a major agricultural trade fair this month with record attendance.",
+      "expected_verdict": "Insufficient Evidence",
+      "expected_article_id": null,
+      "notes": "Shares a location keyword (Romblon) with our flood/evacuation article but describes a completely different, unrelated event. Tests that the conjunctive location+event category scoring correctly EXCLUDES a location-only match rather than treating it as evidence for an unrelated claim."
+    },
+    {
+      "id": "categorized-conjunctive-01",
+      "category": "entity_disambiguation",
+      "claim": "Residents in low-lying areas of Romblon were evacuated due to rising floodwaters from the Southwest Monsoon.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "04de07cd-9802-4d1d-b7d9-6f6d9eeac87f",
+      "notes": "Same location (Romblon) AND matching event (flood/evacuate) - should pass the conjunctive category filter and be retrieved/verified, contrasting with categorized-location-only-01."
+    },
+    {
+      "id": "date-awareness-01",
+      "category": "date_awareness",
+      "claim": "Just happened today: six people died because of Typhoon Luis and Maymay and the Habagat monsoon.",
+      "expected_verdict": "Contradicted",
+      "expected_article_id": "c8cc8ef1-cb44-414b-8106-7edced43cdff",
+      "notes": "The underlying fact (6 deaths from Luis/Maymay/Habagat) is real per our article, but the claim asserts it 'just happened today' when the article is from a different date. Tests the date-awareness instruction - ai_explanation should flag the date mismatch, and since the claim's recency assertion is a material part of what's being claimed, verdict should lean Contradicted (or Verified-with-caveat, but never a silent pass with no date mismatch mentioned)."
+    },
+    {
+      "id": "reliable-outlet-not-in-db-01",
+      "category": "trusted_web_fallback",
+      "claim": "ABS-CBN reported that a P7-billion government plan to remove electricity system loss charges may be structured as a grant, loan, or direct government spending.",
+      "expected_verdict": "Verified",
+      "expected_article_id": null,
+      "notes": "Same underlying story as our BusinessWorld/Manila Bulletin DOE non-technical-loss articles, but explicitly framed as an ABS-CBN report (an outlet not yet in our RSS ingestion pipeline). Tests whether DB evidence alone is sufficient (if the DB articles are close enough in scope) or whether the trusted-web-source fallback correctly kicks in and finds/cites a real ABS-CBN article on the same topic. expected_article_id is null because the correct evidence could legitimately come from either the DB articles OR a live ABS-CBN citation - grade based on whether the verdict is Verified with a real citation, not a specific article ID."
+    },
+    {
+      "id": "no-evidence-specific-detail-01",
+      "category": "insufficient_evidence_partial",
+      "claim": "The government's P7-billion plan to remove system loss charges will specifically be structured as a grant rather than a loan or direct spending.",
+      "expected_verdict": "Insufficient Evidence",
+      "expected_article_id": null,
+      "notes": "Our DB articles confirm the P7.5B plan exists but do NOT specify which funding mechanism (grant/loan/direct spending) will be used. This claim asserts a specific detail beyond what the evidence actually supports - correct behavior is Insufficient Evidence (or Contradicted if evidence explicitly rules it out, but not Verified). Confirmed as a real observed case earlier this session."
+    },
+    {
+      "id": "entity-ambiguous-name-01",
+      "category": "entity_disambiguation",
+      "claim": "Vice President Sara Duterte was cited for expanding her restaurant business across 33 countries.",
+      "expected_verdict": "Insufficient Evidence",
+      "expected_article_id": null,
+      "notes": "'Duterte' appears in our DB (impeachment trial articles), but this claim's actual subject (Jollibee/JFC's 33-country expansion, a same-session article headline 'Jollibee cited for expansion across 33 countries') has nothing to do with the Vice President - a different, unrelated entity/topic. Tests whether keyword overlap on 'Duterte'-adjacent or numeric terms could cause a false match to an unrelated Duterte-mentioning article. Should not be Verified against any Duterte impeachment article."
+    },
+    {
+      "id": "quote-and-url-check-01",
+      "category": "prompt_quality",
+      "claim": "The Philippines' domestic trade in goods dropped by 22% in the second quarter.",
+      "expected_verdict": "Verified",
+      "expected_article_id": "224fc472-cecf-4065-b74b-1dfe20b2ef50",
+      "notes": "Not primarily testing retrieval - use this case to manually inspect whether ai_explanation actually quotes/closely paraphrases the source sentence and whether sources_used[].source_url is present and exactly matches the evidence list (per the EVIDENCE QUALITY prompt instruction added to generateVerdict)."
+    }
+  ]
+}

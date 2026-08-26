@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServiceClient } from "@/lib/supabase";
+import { createSupabaseServiceClient, ARTICLE_COLUMNS } from "@/lib/supabase";
 import type { ArticleCategory, DbArticle } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("articles")
-    .select("*", { count: "exact" })
+    .select(ARTICLE_COLUMNS, { count: "exact" })
     .order("published_at", { ascending: false });
 
   if (category) {
