@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { TRUSTED_RSS_SOURCES } from "@/lib/sources";
 import { createSupabaseServiceClient } from "@/lib/supabase";
+import { embedArticleAndStore } from "@/lib/embeddings";
 import type {
   ArticleCategory,
   ArticleInsert,
@@ -13,6 +14,12 @@ import type {
 
 const MAX_ARTICLES_PER_FEED = 50;
 const RSS_REQUEST_TIMEOUT_MS = 15_000;
+
+// Bound how many articles get embedded concurrently per ingestion run, to
+// stay well under Gemini's embedding rate limits — RSS ingestion runs on a
+// schedule (cron) and could otherwise fire dozens of embedding calls at
+// once if a feed has many new articles.
+const EMBEDDING_CONCURRENCY = 4;
 
 type ParsedRssItem = {
   title?: string;
@@ -30,6 +37,25 @@ type ParsedRssItem = {
 };
 
 const parser = new Parser();
+
+/** Runs `items` through `worker` with at most `concurrency` in flight at once. */
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  let nextIndex = 0;
+
+  async function runNext(): Promise<void> {
+    const index = nextIndex++;
+    if (index >= items.length) return;
+    await worker(items[index]);
+    await runNext();
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => runNext());
+  await Promise.all(workers);
+}
 
 const CATEGORY_RULES: ReadonlyArray<{
   category: ArticleCategory;
@@ -376,20 +402,20 @@ async function ingestSource(
     const sourceUrls = [...new Set(articles.map((article) => article.source_url))];
     const { data: existingArticles, error: existingArticlesError } = await supabase
       .from("articles")
-      .select("source_url, category")
+      .select("id, source_url, category, title, summary")
       .in("source_url", sourceUrls);
 
     if (existingArticlesError) {
       throw existingArticlesError;
     }
 
-    const existingCategories = new Map(
-      (existingArticles ?? []).map((article) => [article.source_url, article.category]),
+    const existingByUrl = new Map(
+      (existingArticles ?? []).map((article) => [article.source_url, article]),
     );
-    const newArticles = articles.filter((article) => !existingCategories.has(article.source_url));
+    const newArticles = articles.filter((article) => !existingByUrl.has(article.source_url));
     const articlesToRecategorize = articles.filter((article) => {
-      const existingCategory = existingCategories.get(article.source_url);
-      return existingCategory !== undefined && existingCategory !== article.category;
+      const existing = existingByUrl.get(article.source_url);
+      return existing !== undefined && existing.category !== article.category;
     });
 
     const [insertResult, recategorizeResult] = await Promise.all([
@@ -400,13 +426,13 @@ async function ingestSource(
               onConflict: "source_url",
               ignoreDuplicates: true,
             })
-            .select("id")
+            .select("id, source_url, title, summary")
         : Promise.resolve({ data: [], error: null }),
       articlesToRecategorize.length > 0
         ? supabase
             .from("articles")
             .upsert(articlesToRecategorize, { onConflict: "source_url" })
-            .select("id")
+            .select("id, source_url, title, summary")
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -416,6 +442,39 @@ async function ingestSource(
 
     const inserted = insertResult.data?.length ?? 0;
     const updated = recategorizeResult.data?.length ?? 0;
+
+    // Generate embeddings server-side for articles that need one:
+    //   - Every newly inserted article (never embedded before).
+    //   - Recategorized articles whose title/summary actually changed —
+    //     a category-only change doesn't affect the embedding, so
+    //     re-embedding would just waste a Gemini call for no benefit.
+    // Duplicates that were ignored entirely (same source_url, same
+    // category, unchanged title/summary) never appear in either upsert
+    // result above, so they're naturally excluded here.
+    //
+    // Embedding failures are logged and otherwise ignored — per spec, an
+    // embedding failure must never cause the article itself to be lost.
+    // The row simply keeps embedding = NULL and will be picked up by a
+    // later run of scripts/backfill-embeddings.mjs.
+    const recategorizedWithTextChange = (recategorizeResult.data ?? []).filter((row) => {
+      const existing = existingByUrl.get(row.source_url);
+      return existing !== undefined && (existing.title !== row.title || existing.summary !== row.summary);
+    });
+
+    const articlesNeedingEmbedding = [...(insertResult.data ?? []), ...recategorizedWithTextChange];
+
+    if (articlesNeedingEmbedding.length > 0) {
+      await runWithConcurrency(articlesNeedingEmbedding, EMBEDDING_CONCURRENCY, async (article) => {
+        const ok = await embedArticleAndStore(supabase, {
+          id: article.id,
+          title: article.title,
+          summary: article.summary,
+        });
+        if (!ok) {
+          console.warn(`[rss] embedding generation failed for article ${article.id} (will retry via backfill script)`);
+        }
+      });
+    }
 
     return {
       sourceId: source.id,

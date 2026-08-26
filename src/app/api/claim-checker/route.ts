@@ -11,7 +11,7 @@
 //      the result in the `claims` table.
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase";
+import { supabaseServer, ARTICLE_COLUMNS } from "@/lib/supabase";
 import { parseClaim, generateVerdict, searchTrustedWebSources } from "@/lib/gemini";
 import { searchArticlesBySemanticSimilarity, reciprocalRankFusion } from "@/lib/embeddings";
 import type { DbArticle, Claim, ClaimCheckerRequest } from "@/types";
@@ -47,13 +47,13 @@ async function searchArticlesFromDb(
     const [titleFts, summaryFts] = await Promise.all([
       db
         .from("articles")
-        .select("*")
+        .select(ARTICLE_COLUMNS)
         .textSearch("title", searchQuery, { type: "websearch", config: "english" })
         .order("published_at", { ascending: false })
         .limit(EVIDENCE_LIMIT),
       db
         .from("articles")
-        .select("*")
+        .select(ARTICLE_COLUMNS)
         .textSearch("summary", searchQuery, { type: "websearch", config: "english" })
         .order("published_at", { ascending: false })
         .limit(EVIDENCE_LIMIT),
@@ -214,7 +214,7 @@ async function searchArticlesFromDb(
     // which broadly-matching articles happen to be newest.
     const { data: candidates, error: likeError } = await db
       .from("articles")
-      .select("*")
+      .select(ARTICLE_COLUMNS)
       .or(orFilter)
       .limit(500);
 

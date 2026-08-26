@@ -122,7 +122,9 @@ export interface IngestionResult {
 
 // ---- Database row types (Supabase `articles` / `claims` tables) ----
 
-/** A row from the Supabase `articles` table (as returned by select("*")). */
+/** A row from the Supabase `articles` table (metadata columns only — see
+ * ARTICLE_COLUMNS in src/lib/supabase.ts; excludes the `embedding` vector
+ * column, which normal queries never select). */
 export interface DbArticle {
   id: string;
   title: string;
