@@ -40,7 +40,7 @@ export default function PillarFan({ pillars }: { pillars: PillarData[] }) {
     <div
       className={
         isDesktop
-          ? "relative mx-auto flex h-[560px] max-w-5xl items-center justify-center"
+          ? "relative mx-auto flex h-[440px] max-w-5xl items-center justify-center"
           : "flex flex-col gap-6"
       }
     >

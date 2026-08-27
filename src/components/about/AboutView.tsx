@@ -422,9 +422,9 @@ export default function AboutView() {
       </motion.section>
 
       {/* ---- Victim pillars — fanned card hand ---- */}
-      <section className="bg-emerald-950/[0.03] py-24">
+      <section className="bg-emerald-950/[0.03] py-14">
         <motion.div
-          className="max-w-6xl mx-auto px-6"
+          className="max-w-6xl mx-auto px-1"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -438,7 +438,7 @@ export default function AboutView() {
           </motion.p>
           <motion.h3
             variants={fadeUpItem}
-            className="font-serif font-bold text-3xl md:text-5xl text-neutral-900 text-center mb-14"
+            className="font-serif font-bold text-3xl md:text-5xl text-neutral-900 text-center mb-6"
           >
             Three Ways Lies Draw Blood.
           </motion.h3>
@@ -515,28 +515,6 @@ export default function AboutView() {
 
       {/* ---- Source legend ---- */}
       <section className="bg-emerald-950 text-white">
-        <div className="max-w-6xl mx-auto px-6 py-10 text-center">
-          <p className="font-sans text-xs uppercase tracking-wide text-white/50 mb-5">
-            The Receipts
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {SOURCE_LEGEND.map((src) => (
-              <a
-                key={src.label}
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative cursor-pointer inline-flex items-center rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-sans font-semibold text-white/80 hover:text-white hover:border-white/40 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                {src.label}
-                <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white text-emerald-900 text-[10px] font-semibold px-2.5 py-1 opacity-0 scale-95 transition-all duration-200 ease-in-out group-hover:opacity-100 group-hover:scale-100">
-                  Verify Source →
-                </span>
-              </a>
-            ))}
-          </div>
-        </div>
-
         {/* ---- Newspaper-unfold finale + popup CTA (routes to "/") ---- */}
         <NewspaperReveal />
       </section>

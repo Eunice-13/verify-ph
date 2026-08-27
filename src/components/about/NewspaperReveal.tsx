@@ -20,8 +20,8 @@ export default function NewspaperReveal() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <section className="relative max-w-3xl mx-auto px-6 py-16 text-center">
-      <p className="font-sans text-xs uppercase tracking-[0.25em] text-emerald-400 mb-6">
+    <section className="relative max-w-3xl mx-auto px-6 py-8 text-center">
+      <p className="font-sans text-xs uppercase tracking-[0.25em] text-emerald-400 mb-4">
         Breaking News!
       </p>
 
@@ -82,7 +82,7 @@ export default function NewspaperReveal() {
         )}
       </AnimatePresence>
 
-      <p className="mt-6 font-serif text-sm text-white/60">
+      <p className="mt-4 font-serif text-sm text-white/60">
         {isOpen ? "" : "Unfold the truth today. Put an end to the cycle of lies."}
       </p>
 

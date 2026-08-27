@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Image from "next/image";
 
 const NEWS_SOURCES = [
@@ -19,28 +16,11 @@ function logoUrl(domain: string): string {
 }
 
 /**
- * Footer with infinite seamless sliding news source logos. Stays hidden
- * until the user scrolls to the very bottom of the page.
+ * Footer with infinite seamless sliding news source logos. Always visible
+ * at the bottom of the page (no scroll-triggered show/hide transition).
  */
 export default function Footer() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [year] = useState(() => new Date().getFullYear());
-
-  useEffect(() => {
-    const checkBottom = () => {
-      const atBottom =
-        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      setIsVisible(atBottom);
-    };
-
-    checkBottom();
-    window.addEventListener("scroll", checkBottom, { passive: true });
-    window.addEventListener("resize", checkBottom);
-    return () => {
-      window.removeEventListener("scroll", checkBottom);
-      window.removeEventListener("resize", checkBottom);
-    };
-  }, []);
+  const year = new Date().getFullYear();
 
   // Duplicate the list to create a mathematically exact seamless loop —
   // each item uses a fixed-width slot so translateX(-50%) always lands
@@ -48,10 +28,7 @@ export default function Footer() {
   const duplicatedSources = [...NEWS_SOURCES, ...NEWS_SOURCES];
 
   return (
-    <footer
-      id="site-footer"
-      className={`bg-emerald-950 text-white ${isVisible ? "footer-visible" : "footer-hidden"}`}
-    >
+    <footer id="site-footer" className="bg-emerald-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
           <h2 className="font-serif font-bold text-lg whitespace-nowrap">

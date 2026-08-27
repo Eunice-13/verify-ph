@@ -203,21 +203,6 @@ body {
   }
 }
 
-/* ---- Footer: hidden until the user reaches the very bottom of the page ---- */
-#site-footer.footer-hidden {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(12px);
-  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out, visibility 0s 400ms;
-}
-
-#site-footer.footer-visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
-}
-
 /* ---- Footer: animated sliding news source logos (infinite seamless) ---- */
 .source-logos-track {
   animation: source-logos-scroll 25s linear infinite;

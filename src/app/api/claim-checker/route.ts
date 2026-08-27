@@ -426,7 +426,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Claim checker pipeline failed. Please try again.",
+        error: "Server capacity reached. Please try again in a few moments.",
         detail: process.env.NODE_ENV === "development" ? message : undefined,
       },
       { status: 502 }

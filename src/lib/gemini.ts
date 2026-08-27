@@ -10,6 +10,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { VERDICT_CATEGORIES } from "@/constants";
 import { TRUSTED_WEB_SOURCES } from "@/lib/sources";
+import { callWithFallback } from "@/lib/llm-providers";
 import type { DbArticle, GeminiVerdictResult } from "@/types";
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -336,14 +337,7 @@ export async function generateVerdict(
     })),
   ];
 
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `You are the VerifyPH Claim Checker AI. Follow these rules strictly:
+  const prompt = `You are the VerifyPH Claim Checker AI. Follow these rules strictly:
 
 1. Use ONLY the articles listed below as evidence. Never invent sources or cite anything not present in this list.
 2. Compare the claim against the title, summary, category, source_name, and published_at of each article.
@@ -372,21 +366,21 @@ ${normalizedClaim}
 
 Retrieved candidate evidence articles (JSON array, may be empty):
 ${JSON.stringify(evidenceForPrompt, null, 2)}
-`,
-          },
-        ],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: VERDICT_RESULT_SCHEMA,
-      temperature: 0.2,
-    },
+`;
+
+  // Routed through the multi-provider fallback pool (see lib/llm-providers.ts):
+  // tries Gemini first, cascading to Backboard-routed providers (gpt-4o-mini,
+  // gpt-4.1-mini, deepseek/deepseek-chat via OpenRouter) if Gemini or an
+  // earlier provider is rate-limited. Every provider is instructed/schema'd
+  // to return the same VERDICT_RESULT_SCHEMA-shaped JSON, so parsing below
+  // is identical regardless of which provider actually answered.
+  const { text, providerName } = await callWithFallback(prompt, {
+    responseSchema: VERDICT_RESULT_SCHEMA,
+    temperature: 0.2,
   });
 
-  const text = response.text;
   if (!text) {
-    throw new Error("Gemini returned an empty response while generating the verdict.");
+    throw new Error(`Provider "${providerName}" returned an empty response while generating the verdict.`);
   }
 
   const parsed = JSON.parse(text) as GeminiVerdictResult;
