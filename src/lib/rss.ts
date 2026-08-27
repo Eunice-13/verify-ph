@@ -4,7 +4,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { TRUSTED_RSS_SOURCES } from "@/lib/sources";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 import { embedArticleAndStore } from "@/lib/embeddings";
-import { findFallbackImageForHeadline } from "@/lib/imageSearch";
 import type {
   ArticleCategory,
   ArticleInsert,
@@ -447,24 +446,6 @@ async function ingestSource(
       const existing = existingByUrl.get(article.source_url);
       return existing !== undefined && existing.category !== article.category;
     });
-
-    // Articles whose feed had no usable image (no enclosure, no Media RSS
-    // field, no <img> in the content snippet — see imageUrlFromItem())
-    // get a real, headline-relevant photo from Openverse instead of
-    // shipping with image_url: null, which would otherwise fall back to
-    // the generic seeded-placeholder image in ArticleCard/ArticleSideCard.
-    // Runs AFTER the dedupe check above (only on newArticles +
-    // articlesToRecategorize — the two sets actually about to be written)
-    // so a duplicate that's about to be silently ignored never triggers a
-    // wasted image search.
-    const articlesNeedingImage = [...newArticles, ...articlesToRecategorize].filter(
-      (a) => !a.image_url
-    );
-    if (articlesNeedingImage.length > 0) {
-      await runWithConcurrency(articlesNeedingImage, EMBEDDING_CONCURRENCY, async (article) => {
-        article.image_url = await findFallbackImageForHeadline(article.title, article.category);
-      });
-    }
 
     const [insertResult, recategorizeResult] = await Promise.all([
       newArticles.length > 0

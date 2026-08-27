@@ -30,15 +30,7 @@ function FloatingClaimBarContent() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const { ref: textareaRef, resize } = useAutoResizeTextarea();
-
-  // Solid/opaque whenever the user is actively engaging with the bar
-  // (hovering, focused inside it, has typed something, or a request is
-  // in flight) — glassy/translucent only when it's sitting there idle, so
-  // it never blocks reading article titles behind it, but also never
-  // reverts to glass mid-typing just because the mouse moved off it.
-  const isExpanded = isHovered || value.trim().length > 0 || loading;
 
   useEffect(() => {
     const BASE_BOTTOM = 32; // matches claim-bar-fixed's default bottom offset (2rem)
@@ -114,11 +106,7 @@ function FloatingClaimBarContent() {
 
       <form
         onSubmit={handleSubmit}
-        className={`claim-bar-glass flex items-center gap-3 rounded-3xl border-2 border-transparent px-5 py-3 max-w-2xl mx-auto claim-input-wrap transition-all duration-300 ${
-          isExpanded ? "claim-bar-glass-solid" : ""
-        }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className="flex items-center gap-3 bg-white rounded-3xl border-2 border-transparent shadow-[0_6px_18px_rgba(0,0,0,0.15)] px-5 py-3 max-w-2xl mx-auto claim-input-wrap transition-all duration-200"
       >
         <textarea
           ref={textareaRef}

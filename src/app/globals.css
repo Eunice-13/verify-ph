@@ -57,35 +57,6 @@ body {
   box-shadow: 0 0 0 4px rgba(6, 95, 70, 0.3), 0 0 18px rgba(6, 95, 70, 0.5);
 }
 
-/* ---- Floating claim bar: "bubble glass" idle state ----
-   While idle (not hovered, not focused, empty, not loading), the bar is a
-   translucent frosted-glass pill so it never acts as an opaque barrier
-   over article titles/images sitting underneath it. Hovering, focusing
-   inside it, typing, or a request being in flight (all handled by
-   FloatingClaimBar.tsx toggling .claim-bar-glass-solid, or natively via
-   :focus-within below) restores the fully opaque white pill it already
-   had. ---- */
-.claim-bar-glass {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
-}
-
-.claim-bar-glass.claim-bar-glass-solid,
-.claim-bar-glass:focus-within {
-  background: #ffffff;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .claim-bar-glass {
-    transition: none;
-  }
-}
-
 /* ---- Claim verification progress bar (bold, vibrant animated) ---- */
 .claim-progress-track {
   position: relative;

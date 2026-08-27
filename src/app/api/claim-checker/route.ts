@@ -14,7 +14,6 @@ import { NextResponse } from "next/server";
 import { supabaseServer, ARTICLE_COLUMNS } from "@/lib/supabase";
 import { parseClaim, generateVerdict, searchTrustedWebSources } from "@/lib/gemini";
 import { searchArticlesBySemanticSimilarity, reciprocalRankFusion } from "@/lib/embeddings";
-import { getCapacityStatus } from "@/lib/llm-providers";
 import type { DbArticle, Claim, ClaimCheckerRequest } from "@/types";
 import type { ParsedClaim } from "@/lib/gemini";
 
@@ -425,18 +424,9 @@ export async function POST(request: Request) {
       err instanceof Error ? err.message : "Unknown error";
     console.error("[claim-checker] pipeline failed:", message, err);
 
-    // Every provider in the fallback pool (see lib/llm-providers.ts) has
-    // exhausted its retries for this request — check whether the whole
-    // pool is now in cooldown, so the error response can tell the user
-    // exactly when to come back instead of just "try again".
-    const capacity = await getCapacityStatus();
-
     return NextResponse.json(
       {
-        error: capacity.atCapacity
-          ? "The Claim Checker is at capacity. Please try again later."
-          : "Server capacity reached. Please try again in a few moments.",
-        availableAt: capacity.availableAt,
+        error: "Server capacity reached. Please try again in a few moments.",
         detail: process.env.NODE_ENV === "development" ? message : undefined,
       },
       { status: 502 }

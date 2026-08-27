@@ -5,7 +5,6 @@ import Header from "@/components/layout/Header";
 import SubNav from "@/components/layout/SubNav";
 import Footer from "@/components/layout/Footer";
 import FloatingClaimBar from "@/components/layout/FloatingClaimBar";
-import CapacityBanner from "@/components/layout/CapacityBanner";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -41,7 +40,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <SubNav />
         </Suspense>
-        <CapacityBanner />
         {children}
         <FloatingClaimBar />
         <Footer />

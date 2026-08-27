@@ -2,7 +2,6 @@
  * Client-side helper for calling the /api/claim-checker endpoint.
  */
 
-import { formatAvailableAt } from "@/lib/useCapacityStatus";
 import type { Claim, ClaimCheckerSuccessResponse } from "@/types";
 
 export interface ClaimCheckResult {
@@ -21,16 +20,10 @@ export async function submitClaim(claimText: string): Promise<ClaimCheckResult> 
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      const baseError: string = body.detail ?? body.error ?? "Something went wrong.";
-      // When the whole provider pool is in cooldown (see
-      // getCapacityStatus() in lib/llm-providers.ts), the API includes
-      // exactly when it's expected to recover — surface that directly in
-      // this specific failure's message, in addition to the persistent
-      // site-wide CapacityBanner.
-      const error: string = body.availableAt
-        ? `${baseError} Try again after ${formatAvailableAt(body.availableAt)}.`
-        : baseError;
-      return { success: false, error };
+      return {
+        success: false,
+        error: body.detail ?? body.error ?? "Something went wrong.",
+      };
     }
 
     const data = (await res.json()) as ClaimCheckerSuccessResponse;

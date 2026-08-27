@@ -8,15 +8,7 @@ export default function ArticleSideCard({ article }: { article: Article }) {
   const provider = article.providerName ?? placeholderProviderName(article.id);
 
   return (
-    // Fixed h-20 on the whole card (matching the thumbnail's own h-20) so
-    // every item in the sidebar list is EXACTLY the same total height
-    // regardless of headline length. Combined with a consistent flex gap
-    // between siblings (see HomeView.tsx), this is what makes the vertical
-    // rhythm down the column genuinely even rather than visually uneven
-    // (previously, a 1-line vs. 3-line headline made items taller/shorter
-    // than each other, which read as inconsistent spacing even though the
-    // CSS gap value itself was constant).
-    <div className="news-card group flex gap-3 h-20">
+    <div className="news-card group flex gap-3">
       <a
         href={url}
         target="_blank"
@@ -40,19 +32,16 @@ export default function ArticleSideCard({ article }: { article: Article }) {
           </span>
         </div>
       </a>
-      {/* Vertically centered within the fixed h-20, clamped to a fixed
-          number of lines each, so text length never changes the item's
-          overall height or pushes it out of alignment with its thumbnail. */}
-      <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
+      <div className="min-w-0">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-serif font-bold text-neutral-900 text-sm leading-snug hover:text-emerald-800 transition-colors line-clamp-2"
+          className="font-serif font-bold text-neutral-900 text-sm leading-snug hover:text-emerald-800 transition-colors"
         >
           {article.title}
         </a>
-        <p className="text-xs font-sans text-neutral-500 line-clamp-1">
+        <p className="mt-1 text-xs font-sans text-neutral-500">
           Sourced from:{" "}
           <a
             href={url}
