@@ -87,14 +87,7 @@ const PARSE_CLAIM_SCHEMA = {
 export async function parseClaim(rawClaim: string): Promise<ParsedClaim> {
   const today = new Date().toISOString().slice(0, 10);
 
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `You are a claim-parsing assistant for VerifyPH, a Philippine fact-checking tool.
+  const prompt = `You are a claim-parsing assistant for VerifyPH, a Philippine fact-checking tool.
 A user pasted the following claim (it may be plain text, or text copied from a social media post/link, and may mix English and Filipino/Tagalog).
 Extract a concise search query, a neutral one-sentence restatement, and categorized keywords.
 
@@ -103,21 +96,20 @@ Today's date is ${today}. If the claim references a relative date ("yesterday", 
 Claim:
 """
 ${rawClaim}
-"""`,
-          },
-        ],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: PARSE_CLAIM_SCHEMA,
-      temperature: 0.2,
-    },
+"""`;
+
+  // Routed through the multi-provider fallback pool (see lib/llm-providers.ts)
+  // — same reasoning as generateVerdict() below: this is often the very
+  // first Gemini call in the pipeline, so if it isn't covered by the
+  // fallback too, a rate-limited Gemini kills the whole request before
+  // generateVerdict()'s own fallback ever gets a chance to run.
+  const { text, providerName } = await callWithFallback(prompt, {
+    responseSchema: PARSE_CLAIM_SCHEMA,
+    temperature: 0.2,
   });
 
-  const text = response.text;
   if (!text) {
-    throw new Error("Gemini returned an empty response while parsing the claim.");
+    throw new Error(`Provider "${providerName}" returned an empty response while parsing the claim.`);
   }
 
   const parsed = JSON.parse(text) as ParsedClaim & { claimed_date: string };

@@ -1,18 +1,41 @@
-// Multi-provider fallback rotation for generateVerdict() (see gemini.ts).
+// Multi-provider fallback rotation for parseClaim() and generateVerdict()
+// (see gemini.ts). NOT used by searchTrustedWebSources() — that call
+// depends on Gemini's built-in Google Search grounding tool, which has no
+// equivalent contract through Backboard-routed models, so it's left
+// calling Gemini directly.
 //
-// Gemini's free tier has tight per-minute/per-day quotas, so a handful of
-// claim checks in quick succession can exhaust it. This pool lets
-// generateVerdict() cascade to other providers (routed through Backboard,
-// see backboard.ts) when Gemini — or any provider in the pool — is
-// rate-limited, without generateVerdict()'s caller needing to know which
-// provider actually answered.
+// Gemini's free tier has tight per-minute AND per-day quotas, so a handful
+// of claim checks in quick succession can exhaust it. This pool lets
+// callWithFallback() cascade to other providers (routed through Backboard,
+// see callBackboard() below) when Gemini — or any provider in the pool —
+// is rate-limited, without the caller needing to know which provider
+// actually answered.
 //
-// DETECTION STRATEGY — read this before changing isRateLimitError():
+// DETECTION STRATEGY — read this before changing the rate-limit checks:
 // Only Gemini's failure shape is actually confirmed: the @google/genai SDK
-// throws an `ApiError` with a real `.status` field (verified by reading
-// node_modules/@google/genai/dist/index.mjs — it has a dedicated `class
-// ApiError extends Error { this.status = ... }`), so `err.status === 429`
-// is a safe, specific check for Gemini.
+// throws an `ApiError` with a real `.status` field AND the parsed error
+// body on `.error` (verified by reading node_modules/@google/genai/dist/
+// index.mjs — `class ApiError extends Error { this.status = ...}`, and
+// the SDK's own APIError.generate()/streaming-error path constructs it
+// with `new ApiError({ message: JSON.stringify(errorBody), status })`).
+// A real observed 429 body (see chat history) looked like:
+//   {
+//     "error": {
+//       "code": 429, "status": "RESOURCE_EXHAUSTED",
+//       "details": [
+//         { "@type": ".../QuotaFailure", "violations": [{
+//             "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+//             ...
+//         }]},
+//         { "@type": ".../RetryInfo", "retryDelay": "16s" }
+//       ]
+//     }
+//   }
+// `err.status === 429` is a safe, specific check for "Gemini is
+// rate-limited in some way". Distinguishing a DAILY quota (retrying soon
+// is guaranteed to fail again) from a PER-MINUTE throttle (retrying soon
+// will likely work) requires inspecting the quotaId string for "PerDay" —
+// see classifyGeminiRateLimit() below.
 //
 // Backboard's failure shape is NOT confirmed to be a clean 429. Live
 // testing against the real API (see chat history) produced two different
@@ -23,17 +46,15 @@
 //   2. System-level failure: HTTP 500 with a generic
 //      `{"detail": "Something went wrong. Please try again later."}` body
 //      — no error code, no distinguishing detail from an unrelated outage.
-// A genuine upstream rate limit (e.g. OpenRouter throttling a model) could
-// plausibly surface as either shape, and we have no confirmed example of
-// which. Rather than hard-coding a check for an unverified 429, treat ANY
+// Rather than hard-coding a check for an unverified 429, treat ANY
 // non-200 HTTP status OR a 200 response with `status !== "COMPLETED"` as
-// fallback-worthy for Backboard-routed providers. This is less precise
-// than a targeted rate-limit check, but it's honest about what's actually
-// been observed — a wrong guess at a specific status code would silently
-// never fire on the failures we've actually seen. Revisit and tighten this
-// once a real rate-limit response has been observed and confirmed.
+// fallback-worthy for Backboard-routed providers, and always use the
+// SHORT cooldown for them (no confirmed signal to detect a Backboard-side
+// daily-vs-per-minute distinction — see classifyGeminiRateLimit()'s doc
+// comment on why guessing wrong here is worse than defaulting short).
 
 import { GoogleGenAI } from "@google/genai";
+import { supabaseServer } from "@/lib/supabase";
 
 const apiKey = process.env.GEMINI_API_KEY;
 const backboardApiKey = process.env.BACKBOARD_API_KEY;
@@ -50,6 +71,20 @@ const GEMINI_MODEL = "gemini-3.6-flash";
 
 const BACKBOARD_BASE_URL = "https://app.backboard.io/api";
 
+// Short cooldown: for throttle-shaped failures where retrying soon is
+// expected to work (per-minute rate limits, transient network/500s, or any
+// Backboard-routed failure — see file header for why Backboard always uses
+// this one).
+const SHORT_COOLDOWN_MS = 90_000; // 90s
+
+// Long cooldown: for a CONFIRMED daily-quota exhaustion, where retrying
+// within the same day is guaranteed to fail again (see the quotaId check
+// in classifyGeminiRateLimit()). Computing the exact UTC/Pacific midnight
+// reset is unnecessary precision for how this is used — a flat 12h means
+// worst case we retry Gemini a bit before it's technically reset, get one
+// more 429, and re-cooldown; that's a single wasted call, not a real cost.
+const LONG_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12h
+
 export interface ProviderCallOptions {
   /** JSON schema (Gemini responseSchema shape) describing the expected output, used only by callGeminiNative. */
   responseSchema?: object;
@@ -61,29 +96,75 @@ export type ProviderCall = (prompt: string, options?: ProviderCallOptions) => Pr
 export interface ProviderConfig {
   name: string;
   call: ProviderCall;
-  /** How long to skip this provider after it's identified as rate-limited. */
-  cooldownMs: number;
 }
 
 /** Thrown by a provider's call() when the failure looks like a rate limit
  * (as opposed to a real bug, which should propagate normally). */
 export class ProviderRateLimitedError extends Error {
-  constructor(public providerName: string, cause: unknown) {
+  constructor(
+    public providerName: string,
+    cause: unknown,
+    /** How long to cool this provider down for. Defaults to the short
+     * cooldown at the throw site if not specified — see classification
+     * helpers below for how a caller decides which duration applies. */
+    public cooldownMs: number = SHORT_COOLDOWN_MS
+  ) {
     super(`Provider "${providerName}" appears to be rate-limited.`);
     this.cause = cause;
   }
 }
 
-/** Thrown when a provider returned text that isn't valid JSON. Fallback
- * providers (Backboard-routed, since they have no native schema
- * enforcement like Gemini's responseSchema) are more prone to this than
- * Gemini — treated as fallback-worthy so one model's formatting slip
- * doesn't hard-fail the whole request when other providers are available. */
+/** Thrown when a provider returned text that isn't valid JSON, OR valid
+ * JSON that's missing one or more fields the schema marks as required
+ * (see hasAllRequiredFields()). Fallback providers (Backboard-routed,
+ * since they have no native schema enforcement like Gemini's
+ * responseSchema) are more prone to both than Gemini — treated as
+ * fallback-worthy so one model's formatting/completeness slip doesn't
+ * hard-fail the whole request when other providers are available. */
 export class ProviderResponseInvalidError extends Error {
   constructor(public providerName: string, cause: unknown) {
     super(`Provider "${providerName}" returned a response that isn't valid JSON.`);
     this.cause = cause;
   }
+}
+
+/**
+ * Inspects a Gemini ApiError to decide whether this is a confirmed DAILY
+ * quota exhaustion (long cooldown — retrying soon is guaranteed to fail)
+ * or anything else, including a per-minute throttle (short cooldown —
+ * retrying soon is expected to eventually work).
+ *
+ * DEFAULT-SHORT ON AMBIGUITY: if the error body doesn't parse or doesn't
+ * contain a recognizable quotaId, this defaults to the short cooldown.
+ * Wrongly guessing "long" would lock out Gemini for 12 hours based on a
+ * misread; wrongly guessing "short" just means we eat one extra wasted
+ * call before the real cooldown kicks in on the next 429. The asymmetric
+ * cost is why ambiguous cases lean short, per the agreed approach.
+ */
+function classifyGeminiRateLimit(err: unknown): number {
+  // The SDK's ApiError stores the raw parsed error body on `.error` when
+  // available (see APIError.generate() in the SDK source), but some throw
+  // sites only set `.message` to the stringified body — check both.
+  const asRecord = err as { error?: unknown; message?: unknown } | null;
+  const rawBody = asRecord?.error ?? asRecord?.message;
+
+  let bodyText: string;
+  if (typeof rawBody === "string") {
+    bodyText = rawBody;
+  } else if (rawBody && typeof rawBody === "object") {
+    bodyText = JSON.stringify(rawBody);
+  } else {
+    return SHORT_COOLDOWN_MS;
+  }
+
+  // Confirmed real shape: quotaId "GenerateRequestsPerDayPerProjectPerModel-FreeTier".
+  // Match on "PerDay" specifically rather than the full string, since the
+  // exact quotaId could vary by model/tier.
+  if (/quotaId["\s:]+["']?[^"'\n]*PerDay/i.test(bodyText)) {
+    return LONG_COOLDOWN_MS;
+  }
+
+  return SHORT_COOLDOWN_MS;
 }
 
 /**
@@ -113,7 +194,7 @@ async function callGeminiNative(prompt: string, options?: ProviderCallOptions): 
     // `.status` (see file header comment). 429 = RESOURCE_EXHAUSTED/quota.
     const status = (err as { status?: number } | null)?.status;
     if (status === 429) {
-      throw new ProviderRateLimitedError("gemini", err);
+      throw new ProviderRateLimitedError("gemini", err, classifyGeminiRateLimit(err));
     }
     throw err;
   }
@@ -127,7 +208,8 @@ interface BackboardMessageResponse {
 /**
  * Calls a model through Backboard (https://app.backboard.io) — see file
  * header comment for why the rate-limit detection here is deliberately
- * broad rather than keyed to a specific status code.
+ * broad rather than keyed to a specific status code, and why it always
+ * uses the short cooldown (no confirmed daily-vs-per-minute signal).
  */
 function callBackboard(llmProvider: string, modelName: string): ProviderCall {
   return async (prompt: string, options?: ProviderCallOptions): Promise<string> => {
@@ -188,24 +270,21 @@ function callBackboard(llmProvider: string, modelName: string): ProviderCall {
 }
 
 /**
- * Ordered provider pool for generateVerdict(). Cascades top to bottom,
+ * Ordered provider pool for callWithFallback(). Cascades top to bottom,
  * skipping providers currently in cooldown (see rotation logic below).
  */
 export const providerPool: ProviderConfig[] = [
   {
     name: "gemini",
     call: callGeminiNative,
-    cooldownMs: 90_000,
   },
   {
     name: "backboard-gpt-4o-mini",
     call: callBackboard("openai", "gpt-4o-mini"),
-    cooldownMs: 90_000,
   },
   {
     name: "backboard-gpt-4.1-mini",
     call: callBackboard("openai", "gpt-4.1-mini"),
-    cooldownMs: 90_000,
   },
   {
     name: "backboard-deepseek",
@@ -214,23 +293,96 @@ export const providerPool: ProviderConfig[] = [
     // through Backboard's "openrouter" provider, not a native "deepseek"
     // provider (Backboard's provider list has no "deepseek" entry).
     call: callBackboard("openrouter", "deepseek/deepseek-chat"),
-    cooldownMs: 90_000,
   },
 ];
 
-// In-memory cooldown tracker: provider name -> timestamp (ms) when it
-// becomes eligible again. Module-level state is fine here — this resets on
-// server restart/redeploy, which just means providers get retried sooner
-// than their cooldown after a deploy, not a correctness issue.
-const cooldownUntil = new Map<string, number>();
+// ---------------------------------------------------------------------------
+// Cooldown persistence (Supabase-backed, with an in-memory fallback if the
+// table is missing or the DB is briefly unreachable — see file header on
+// why an in-memory-only map isn't sufficient on its own for Vercel).
+// ---------------------------------------------------------------------------
 
-function isInCooldown(name: string): boolean {
-  const until = cooldownUntil.get(name);
-  return until !== undefined && Date.now() < until;
+// In-memory mirror: avoids a DB round-trip on every single provider call
+// within one request (multiple providers may be checked per call), and
+// acts as a same-process fallback if Supabase is unreachable or the
+// provider_cooldowns table hasn't been migrated in yet.
+const cooldownUntilMemory = new Map<string, number>();
+
+let cooldownTableConfirmedMissing = false;
+
+async function readCooldownFromDb(name: string): Promise<number | null> {
+  if (cooldownTableConfirmedMissing) return null;
+  try {
+    const db = supabaseServer();
+    const { data, error } = await db
+      .from("provider_cooldowns")
+      .select("cooldown_until")
+      .eq("provider_name", name)
+      .maybeSingle();
+
+    if (error) {
+      // Table likely doesn't exist yet (migration not applied) — degrade
+      // to in-memory-only for the rest of this process's lifetime rather
+      // than re-querying a missing table on every call.
+      cooldownTableConfirmedMissing = true;
+      console.warn(
+        `[llm-providers] provider_cooldowns table unavailable, falling back to in-memory-only cooldowns for this process: ${error.message}`
+      );
+      return null;
+    }
+
+    return data ? new Date(data.cooldown_until).getTime() : null;
+  } catch (err) {
+    console.warn("[llm-providers] readCooldownFromDb threw:", err);
+    return null;
+  }
 }
 
-function setCooldown(config: ProviderConfig): void {
-  cooldownUntil.set(config.name, Date.now() + config.cooldownMs);
+async function writeCooldownToDb(name: string, untilMs: number, reason: string): Promise<void> {
+  if (cooldownTableConfirmedMissing) return;
+  try {
+    const db = supabaseServer();
+    const { error } = await db.from("provider_cooldowns").upsert({
+      provider_name: name,
+      cooldown_until: new Date(untilMs).toISOString(),
+      reason,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      cooldownTableConfirmedMissing = true;
+      console.warn(
+        `[llm-providers] could not persist cooldown for "${name}", falling back to in-memory-only for this process: ${error.message}`
+      );
+    }
+  } catch (err) {
+    console.warn("[llm-providers] writeCooldownToDb threw:", err);
+  }
+}
+
+/**
+ * Checks whether `name` is currently in cooldown. Prefers the persisted
+ * (Supabase) value so cooldowns survive across serverless invocations and
+ * redeploys; falls back to the in-memory mirror if the DB read fails or
+ * the table isn't migrated in yet.
+ */
+async function isInCooldown(name: string): Promise<boolean> {
+  const dbUntil = await readCooldownFromDb(name);
+  if (dbUntil !== null) {
+    cooldownUntilMemory.set(name, dbUntil); // keep the mirror in sync
+    return Date.now() < dbUntil;
+  }
+
+  const memUntil = cooldownUntilMemory.get(name);
+  return memUntil !== undefined && Date.now() < memUntil;
+}
+
+function setCooldown(name: string, cooldownMs: number, reason: string): void {
+  const until = Date.now() + cooldownMs;
+  cooldownUntilMemory.set(name, until);
+  // Fire-and-forget: don't block the fallback cascade on the DB write
+  // completing, but do surface a warning if it fails (handled inside).
+  void writeCooldownToDb(name, until, reason);
 }
 
 /** Strips markdown code fences some models wrap JSON in despite being
@@ -243,16 +395,43 @@ function stripCodeFences(text: string): string {
 }
 
 /**
+ * Validates that a parsed JSON response actually contains every field
+ * listed in the schema's top-level `required` array, with a defined
+ * (non-undefined, non-null) value.
+ *
+ * WHY THIS EXISTS: Gemini's native responseSchema hard-enforces this
+ * shape server-side, so it was never a concern for the original
+ * Gemini-only pipeline. Backboard has no such enforcement — it only gets
+ * a prompt instruction asking for the shape (see callBackboard()'s
+ * jsonInstruction). A real observed failure: parseClaim() fell back to
+ * backboard-gpt-4o-mini, which returned syntactically valid JSON that
+ * nonetheless omitted the required `search_query` field, and the missing
+ * field wasn't caught until it crashed downstream in
+ * route.ts's normalize(undefined). Catching that here — before the
+ * response is accepted — lets it cascade to the next provider instead.
+ */
+function hasAllRequiredFields(parsed: unknown, schema: object): boolean {
+  const required = (schema as { required?: unknown }).required;
+  if (!Array.isArray(required) || required.length === 0) return true;
+  if (typeof parsed !== "object" || parsed === null) return false;
+
+  const record = parsed as Record<string, unknown>;
+  return required.every((key) => typeof key === "string" && record[key] !== undefined && record[key] !== null);
+}
+
+/**
  * Runs `prompt` through the provider pool, cascading on rate-limit-shaped
  * failures (see ProviderRateLimitedError) OR an unparseable/non-JSON
  * response (see ProviderResponseInvalidError) until one succeeds. Any
  * other error type propagates immediately — it's surfaced as a real bug,
  * not silently swallowed by moving to the next provider.
  *
- * When `options.responseSchema` is set (i.e. the caller expects JSON back,
- * as generateVerdict() does), the response is validated as parseable JSON
- * here before being accepted — a malformed response from one provider
- * cascades to the next rather than blowing up JSON.parse() downstream.
+ * Used by both parseClaim() and generateVerdict() in gemini.ts (NOT by
+ * searchTrustedWebSources() — see file header). When
+ * `options.responseSchema` is set (both current callers set it), the
+ * response is validated as parseable JSON here before being accepted — a
+ * malformed response from one provider cascades to the next rather than
+ * blowing up JSON.parse() downstream in gemini.ts.
  *
  * If every provider is currently in cooldown, cooldowns are ignored and
  * the full list is tried anyway rather than hard-failing the request.
@@ -261,7 +440,10 @@ export async function callWithFallback(
   prompt: string,
   options?: ProviderCallOptions
 ): Promise<{ text: string; providerName: string }> {
-  const available = providerPool.filter((p) => !isInCooldown(p.name));
+  const cooldownFlags = await Promise.all(
+    providerPool.map((p) => isInCooldown(p.name))
+  );
+  const available = providerPool.filter((_, i) => !cooldownFlags[i]);
   const candidates = available.length > 0 ? available : providerPool;
 
   let lastError: unknown = null;
@@ -272,21 +454,32 @@ export async function callWithFallback(
 
       if (options?.responseSchema) {
         const cleaned = stripCodeFences(rawText);
+        let parsedJson: unknown;
         try {
-          JSON.parse(cleaned);
+          parsedJson = JSON.parse(cleaned);
         } catch (parseErr) {
           throw new ProviderResponseInvalidError(provider.name, parseErr);
         }
-        console.log(`[llm-providers] generateVerdict served by "${provider.name}"`);
+        if (!hasAllRequiredFields(parsedJson, options.responseSchema)) {
+          throw new ProviderResponseInvalidError(
+            provider.name,
+            new Error(`Response is missing one or more required fields: ${cleaned}`)
+          );
+        }
+        console.log(`[llm-providers] request served by "${provider.name}"`);
         return { text: cleaned, providerName: provider.name };
       }
 
-      console.log(`[llm-providers] generateVerdict served by "${provider.name}"`);
+      console.log(`[llm-providers] request served by "${provider.name}"`);
       return { text: rawText, providerName: provider.name };
     } catch (err) {
       if (err instanceof ProviderRateLimitedError) {
-        console.warn(`[llm-providers] "${provider.name}" rate-limited/unavailable, cooling down and trying next.`, err.cause);
-        setCooldown(provider);
+        const cooldownMinutes = Math.round(err.cooldownMs / 60_000);
+        console.warn(
+          `[llm-providers] "${provider.name}" rate-limited/unavailable, cooling down for ~${cooldownMinutes}min and trying next.`,
+          err.cause
+        );
+        setCooldown(provider.name, err.cooldownMs, err.message);
         lastError = err;
         continue;
       }
