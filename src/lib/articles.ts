@@ -31,6 +31,19 @@ export const UI_TO_DB_CATEGORY: Record<Category, ArticleCategory> = {
   GENERAL: "General",
 };
 
+function describeSupabaseError(error: unknown): string {
+  if (!error || typeof error !== "object") return String(error);
+
+  const details = ["message", "code", "details", "hint"]
+    .map((key) => {
+      const value = (error as Record<string, unknown>)[key];
+      return typeof value === "string" && value.trim() ? `${key}: ${value}` : null;
+    })
+    .filter(Boolean);
+
+  return details.length > 0 ? details.join("; ") : "Unknown Supabase query error";
+}
+
 function dbArticleToFrontEnd(row: DbArticle): Article {
   return {
     id: row.id,
@@ -61,34 +74,39 @@ export async function fetchArticlesServer(options?: {
   limit?: number;
   offset?: number;
 }): Promise<Article[]> {
-  // Dynamic import to avoid bundling the service-role key in client bundles.
-  const { createSupabaseServiceClient, ARTICLE_COLUMNS } = await import("@/lib/supabase");
-  const supabase = createSupabaseServiceClient();
+  try {
+    // Dynamic import to avoid bundling the service-role key in client bundles.
+    const { createSupabaseServiceClient, ARTICLE_COLUMNS } = await import("@/lib/supabase");
+    const supabase = createSupabaseServiceClient();
 
-  const limit = options?.limit ?? 20;
-  const offset = options?.offset ?? 0;
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
 
-  let query = supabase
-    .from("articles")
-    .select(ARTICLE_COLUMNS)
-    .order("published_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    let query = supabase
+      .from("articles")
+      .select(ARTICLE_COLUMNS)
+      .order("published_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  if (options?.category) {
-    const dbCategory = UI_TO_DB_CATEGORY[options.category];
-    if (dbCategory) {
-      query = query.eq("category", dbCategory);
+    if (options?.category) {
+      const dbCategory = UI_TO_DB_CATEGORY[options.category];
+      if (dbCategory) {
+        query = query.eq("category", dbCategory);
+      }
     }
-  }
 
-  const { data, error } = await query;
+    const { data, error } = await query;
 
-  if (error) {
-    console.error("[articles] server fetch failed:", error);
+    if (error) {
+      console.warn("[articles] server fetch failed:", describeSupabaseError(error));
+      return [];
+    }
+
+    return ((data ?? []) as DbArticle[]).map(dbArticleToFrontEnd);
+  } catch (error) {
+    console.warn("[articles] server fetch failed:", describeSupabaseError(error));
     return [];
   }
-
-  return ((data ?? []) as DbArticle[]).map(dbArticleToFrontEnd);
 }
 
 // ---------------------------------------------------------------------------
