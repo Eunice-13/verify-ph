@@ -97,6 +97,7 @@ export async function fetchArticlesServer(options?: {
 
 export async function fetchArticlesClient(options?: {
   category?: Category | null;
+  search?: string | null;
   limit?: number;
   offset?: number;
 }): Promise<Article[]> {
@@ -106,6 +107,7 @@ export async function fetchArticlesClient(options?: {
     const dbCategory = UI_TO_DB_CATEGORY[options.category];
     if (dbCategory) params.set("category", dbCategory);
   }
+  if (options?.search) params.set("search", options.search);
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.offset) params.set("offset", String(options.offset));
 

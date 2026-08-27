@@ -30,16 +30,24 @@ function FloatingClaimBarContent() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [positionClass, setPositionClass] = useState("claim-bar-fixed");
   const { ref: textareaRef, resize } = useAutoResizeTextarea();
 
   useEffect(() => {
-    const lockThreshold = () =>
-      document.documentElement.scrollHeight - window.innerHeight - 160;
+    const BASE_BOTTOM = 32; // matches claim-bar-fixed's default bottom offset (2rem)
+    const GAP_ABOVE_FOOTER = 32;
 
     const updatePosition = () => {
-      const shouldLock = window.scrollY >= lockThreshold();
-      setPositionClass(shouldLock ? "claim-bar-locked" : "claim-bar-fixed");
+      const bar = document.getElementById("floating-claim-bar");
+      const footer = document.getElementById("site-footer");
+      if (!bar) return;
+
+      const footerRect = footer?.getBoundingClientRect();
+      const footerVisibleHeight = footerRect
+        ? Math.max(0, window.innerHeight - footerRect.top)
+        : 0;
+
+      const bottomOffset = Math.max(BASE_BOTTOM, footerVisibleHeight + GAP_ABOVE_FOOTER);
+      bar.style.bottom = `${bottomOffset}px`;
     };
 
     updatePosition();
@@ -89,7 +97,7 @@ function FloatingClaimBarContent() {
   };
 
   return (
-    <div id="floating-claim-bar" className={positionClass}>
+    <div id="floating-claim-bar" className="claim-bar-fixed">
       {loading && (
         <div className="max-w-2xl mx-auto mb-3">
           <ClaimProgress />

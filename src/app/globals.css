@@ -97,26 +97,21 @@ body {
   }
 }
 
-/* ---- Floating / locking claim-checker bar (home + category pages) ----
-   Follows the viewport (fixed, centered) while scrolling, then locks into
-   an absolute position within the document once the user nears the bottom
-   of the page, so it never overlaps the footer reveal. ---- */
+/* ---- Floating claim-checker bar (home + category pages) ----
+   Always position: fixed relative to the viewport. JS (FloatingClaimBar.tsx)
+   dynamically raises its `bottom` inline style so it never overlaps the
+   footer once the footer scrolls into view. ---- */
 #floating-claim-bar {
   left: 0;
   right: 0;
   z-index: 20;
   padding: 0 1.5rem;
-  transition: opacity 400ms ease-in-out;
+  transition: bottom 150ms ease-out;
 }
 
 #floating-claim-bar.claim-bar-fixed {
   position: fixed;
   bottom: 2rem;
-}
-
-#floating-claim-bar.claim-bar-locked {
-  position: absolute;
-  bottom: 7rem;
 }
 
 /* ---- Claim result modal/overlay: centered vertically between the
@@ -130,7 +125,7 @@ body {
   z-index: 50;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 2rem 1.5rem;
   animation: claim-modal-fade-in 200ms ease-out;
@@ -144,7 +139,7 @@ body {
   overflow-y: auto;
   background: #f4f1ea;
   border-radius: 1.5rem;
-  padding: 2.5rem 1.5rem 2rem;
+  padding: 1.75rem 1.5rem 2rem;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   animation: claim-modal-slide-up 220ms ease-out;
   scrollbar-width: thin; /* Firefox: slim track, no arrow buttons by default */

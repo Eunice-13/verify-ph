@@ -20,6 +20,7 @@ const MAX_LIMIT = 100;
  *
  * Query params:
  *   category  — one of the ArticleCategory values (optional; omit for all)
+ *   search    — free-text keyword search across title/summary (optional)
  *   limit     — number of articles to return (default 20, max 100)
  *   offset    — pagination offset (default 0)
  *   featured  — "true" to return only the single most recent article (hero)
@@ -27,6 +28,7 @@ const MAX_LIMIT = 100;
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const categoryParam = url.searchParams.get("category");
+  const searchParam = url.searchParams.get("search");
   const limitParam = url.searchParams.get("limit");
   const offsetParam = url.searchParams.get("offset");
   const featuredParam = url.searchParams.get("featured");
@@ -61,6 +63,13 @@ export async function GET(request: Request) {
 
   if (category) {
     query = query.eq("category", category);
+  }
+
+  // Free-text keyword search across title and summary.
+  const search = searchParam?.trim();
+  if (search) {
+    const escaped = search.replace(/[%_,]/g, (m) => `\\${m}`);
+    query = query.or(`title.ilike.%${escaped}%,summary.ilike.%${escaped}%`);
   }
 
   if (featuredParam === "true") {

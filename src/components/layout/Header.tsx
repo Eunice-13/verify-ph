@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ShieldCheck, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { CATEGORIES } from "@/types";
+import SearchBar from "@/components/layout/SearchBar";
 
 const CATEGORY_LABELS: Record<string, string> = {
   "NEWS & POLITICS": "News & Politics",
@@ -79,13 +81,16 @@ export default function Header() {
     <header className="sticky top-0 z-40 bg-emerald-900 text-white">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="cursor-pointer flex items-center gap-3">
-          <ShieldCheck className="w-7 h-7" strokeWidth={1.5} />
+          <span className="w-7 h-7 shrink-0 flex items-center justify-center">
+            <Image src="/verify-ph-logo.svg" alt="VerifyPH logo" width={28} height={28} className="w-full h-full object-contain" priority />
+          </span>
           <span className="font-serif font-bold text-xl">VerifyPH</span>
           <span className="hidden sm:inline text-white/40">|</span>
           <span className="hidden sm:inline font-sans text-sm text-white/90">{dateText}</span>
         </Link>
 
         <div className="flex items-center gap-4">
+          <SearchBar />
           <div className="relative">
             <button
               ref={buttonRef}
