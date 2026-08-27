@@ -385,6 +385,58 @@ function setCooldown(name: string, cooldownMs: number, reason: string): void {
   void writeCooldownToDb(name, until, reason);
 }
 
+export interface CapacityStatus {
+  /** True only when EVERY provider in the pool is currently in cooldown —
+   * i.e. the next real request would have to cascade through the whole
+   * pool and still fail. As long as at least one provider is available,
+   * the claim checker keeps working (just possibly via a fallback), so
+   * this is deliberately NOT true just because Gemini specifically is
+   * rate-limited. */
+  atCapacity: boolean;
+  /** ISO timestamp of the earliest point at which capacity is expected to
+   * free up (the soonest of all providers' cooldown_until) — the moment
+   * atCapacity should flip back to false. Null when atCapacity is false. */
+  availableAt: string | null;
+}
+
+/**
+ * Computes whether the whole provider pool is currently exhausted, and if
+ * so, when the soonest provider is expected to become available again.
+ * Used by GET /api/capacity-status (for the site-wide banner — see
+ * useCapacityStatus.ts) and by the claim-checker route's error response
+ * when every provider in a single request's cascade fails.
+ *
+ * Reads the same persisted (Supabase) + in-memory cooldown state
+ * isInCooldown() uses, so this reflects the real, current cooldown state
+ * rather than a separate/duplicated source of truth.
+ */
+export async function getCapacityStatus(): Promise<CapacityStatus> {
+  const untilTimestamps = await Promise.all(
+    providerPool.map(async (p) => {
+      const dbUntil = await readCooldownFromDb(p.name);
+      if (dbUntil !== null) {
+        cooldownUntilMemory.set(p.name, dbUntil);
+        return dbUntil;
+      }
+      return cooldownUntilMemory.get(p.name) ?? null;
+    })
+  );
+
+  const now = Date.now();
+  const activeCooldowns = untilTimestamps.filter(
+    (until): until is number => until !== null && until > now
+  );
+
+  // At least one provider has no active cooldown -> the pool can still
+  // serve a request right now.
+  if (activeCooldowns.length < providerPool.length) {
+    return { atCapacity: false, availableAt: null };
+  }
+
+  const soonest = Math.min(...activeCooldowns);
+  return { atCapacity: true, availableAt: new Date(soonest).toISOString() };
+}
+
 /** Strips markdown code fences some models wrap JSON in despite being
  * instructed not to (mainly relevant to Backboard-routed models, which
  * lack Gemini's hard responseSchema enforcement). */

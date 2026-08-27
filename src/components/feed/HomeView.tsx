@@ -20,7 +20,7 @@ export default async function HomeView() {
   const featured = allArticles[0] ?? null;
   const pool = allArticles.slice(1);
   const leftArticles = pool.slice(0, 2);
-  const rightArticles = pool.slice(2, 5);
+  const rightArticles = pool.slice(2, 7);
 
   return (
     <>
@@ -54,10 +54,21 @@ export default async function HomeView() {
               <EmptyCardSkeleton heightClass="h-72 md:h-[26rem]" />
             )}
           </div>
-          <div className="md:col-span-1 flex flex-col gap-5">
-            {rightArticles.map((article) => (
-              <ArticleSideCard key={article.id} article={article} />
-            ))}
+          {/* Sidebar list: every item (ArticleSideCard) is a fixed h-20,
+              so a constant `gap` here produces genuinely even vertical
+              spacing regardless of headline length — no item can be
+              taller/shorter than another and throw off the rhythm. 5
+              items (not 4) so 5 items x h-20 + 4 gaps lines up with the
+              center column's h-[26rem] hero image height instead of
+              falling short of it. */}
+          <div className="md:col-span-1 flex flex-col gap-4">
+            {Array.from({ length: 5 }, (_, i) =>
+              rightArticles[i] ? (
+                <ArticleSideCard key={rightArticles[i].id} article={rightArticles[i]} />
+              ) : (
+                <EmptyCardSkeleton key={`right-empty-${i}`} heightClass="h-20" />
+              )
+            )}
           </div>
         </div>
       </section>
