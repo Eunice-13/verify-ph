@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Home } from "lucide-react";
-import { Article, RealCategory } from "@/types";
+import { Article, Category } from "@/types";
 import { fetchArticlesClient } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
@@ -20,7 +20,7 @@ export default function CategoryView({
   category,
   search,
 }: {
-  category?: RealCategory;
+  category?: Category;
   search?: string;
 }) {
   const [articles, setArticles] = useState<Article[]>([]);

@@ -10,7 +10,7 @@
 // should be populated with the actual article URL, the actual publisher
 // name, and an editorially-flagged "most relevant today" boolean.
 
-import { Article, RealCategory } from "@/types";
+import { Article, Category } from "@/types";
 
 /** Deterministic placeholder photo per article id (picsum.photos seeded service). */
 export function placeholderImage(id: string | number, width = 800, height = 600): string {
@@ -358,7 +358,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 13,
-    category: "NEWS & POLITICS",
+    category: "GENERAL",
     title: "Community Pantry Network Marks Third Year of Operation",
     excerpt: "Volunteer-run pantries continue expanding, now serving over 40 barangays nationwide.",
     body:
@@ -369,7 +369,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 14,
-    category: "NEWS & POLITICS",
+    category: "GENERAL",
     title: "Public Library System Adds Digital Lending for Rural Schools",
     excerpt: "The initiative aims to bring e-book access to schools without physical library branches.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -378,7 +378,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 15,
-    category: "HEALTH & SAFETY",
+    category: "GENERAL",
     title: "Volunteer Group Completes Coastal Cleanup Milestone",
     excerpt: "Over 5,000 volunteers have joined the cleanup drive since it started this year.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -387,7 +387,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 38,
-    category: "ECONOMY",
+    category: "GENERAL",
     title: "Provincial Job Fair Draws Record Number of Applicants",
     excerpt: "Over 3,000 jobseekers attended the two-day fair hosted by the local government.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -396,7 +396,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 39,
-    category: "LIFESTYLE",
+    category: "GENERAL",
     title: "Stray Animal Shelter Reaches Full Capacity, Seeks Adopters",
     excerpt: "The shelter is calling for the public's help as intake numbers continue to rise.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -405,7 +405,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 40,
-    category: "NEWS & POLITICS",
+    category: "GENERAL",
     title: "Public School Renovation Program Completes Phase One",
     excerpt: "Twenty schools received new classrooms and upgraded facilities this year.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -414,7 +414,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 41,
-    category: "HEALTH & SAFETY",
+    category: "GENERAL",
     title: "Local Weather Station Upgrades Improve Storm Forecasting",
     excerpt: "New equipment allows for more accurate early warnings during typhoon season.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -423,7 +423,7 @@ export const NEWS_DATA: Article[] = [
   },
   {
     id: 42,
-    category: "LIFESTYLE",
+    category: "GENERAL",
     title: "Public Transport App Adds Real-Time Jeepney Tracking",
     excerpt: "Commuters can now check estimated arrival times on major routes.",
     body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -437,7 +437,7 @@ export const NEWS_DATA: Article[] = [
  * This is the single source of truth every news view must read through —
  * no view is permitted to read NEWS_DATA directly.
  */
-export function getVerifiedArticles(category?: RealCategory | null): Article[] {
+export function getVerifiedArticles(category?: Category | null): Article[] {
   return NEWS_DATA.filter((item) => {
     if (item.status !== "VERIFIED") return false;
     if (category && item.category !== category) return false;

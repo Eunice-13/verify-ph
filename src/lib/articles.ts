@@ -7,37 +7,34 @@
  * Both return the front-end `Article` shape used by presentation components.
  */
 
-import type { Article, ArticleCategory, DbArticle, RealCategory } from "@/types";
+import type { Article, ArticleCategory, Category, DbArticle } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Mapping helpers: DbArticle (Supabase row) → Article (front-end shape)
-//
-// Both maps are keyed/valued by RealCategory (not the wider Category), since
-// "GENERAL" is the "For You" home-embed slot, not a real DB category — it
-// must never appear on either side of a DB category lookup. See CATEGORIES'
-// doc comment in src/types/index.ts.
 // ---------------------------------------------------------------------------
 
 /** Map DB category (title-case) to the UI constant (SCREAMING_CASE). */
-const DB_TO_UI_CATEGORY: Record<ArticleCategory, RealCategory> = {
+const DB_TO_UI_CATEGORY: Record<ArticleCategory, Category> = {
   "News & Politics": "NEWS & POLITICS",
   Economy: "ECONOMY",
   "Health & Safety": "HEALTH & SAFETY",
   Lifestyle: "LIFESTYLE",
+  General: "GENERAL",
 };
 
 /** Map UI category (SCREAMING_CASE) to the DB category (title-case). */
-export const UI_TO_DB_CATEGORY: Record<RealCategory, ArticleCategory> = {
+export const UI_TO_DB_CATEGORY: Record<Category, ArticleCategory> = {
   "NEWS & POLITICS": "News & Politics",
   ECONOMY: "Economy",
   "HEALTH & SAFETY": "Health & Safety",
   LIFESTYLE: "Lifestyle",
+  GENERAL: "General",
 };
 
 function dbArticleToFrontEnd(row: DbArticle): Article {
   return {
     id: row.id,
-    category: DB_TO_UI_CATEGORY[row.category],
+    category: DB_TO_UI_CATEGORY[row.category] ?? "GENERAL",
     title: row.title,
     excerpt: row.summary ?? "",
     body: "",
@@ -60,7 +57,7 @@ function dbArticleToFrontEnd(row: DbArticle): Article {
 // ---------------------------------------------------------------------------
 
 export async function fetchArticlesServer(options?: {
-  category?: RealCategory | null;
+  category?: Category | null;
   limit?: number;
   offset?: number;
 }): Promise<Article[]> {
@@ -99,7 +96,7 @@ export async function fetchArticlesServer(options?: {
 // ---------------------------------------------------------------------------
 
 export async function fetchArticlesClient(options?: {
-  category?: RealCategory | null;
+  category?: Category | null;
   search?: string | null;
   limit?: number;
   offset?: number;

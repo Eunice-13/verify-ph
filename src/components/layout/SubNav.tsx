@@ -1,24 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { CATEGORIES, FOR_YOU_CATEGORY } from "@/types";
-
-// "GENERAL" is the "For You" home-embed slot, not a real category — see
-// FOR_YOU_CATEGORY in src/types/index.ts. Displayed as "FOR YOU" here so
-// the tab doesn't imply it's just another content category.
-const TAB_LABELS: Record<string, string> = {
-  [FOR_YOU_CATEGORY]: "GENERAL",
-};
+import { useSearchParams } from "next/navigation";
+import { CATEGORIES } from "@/types";
 
 /** Sub-navigation pinned directly under the header — the 5 category tabs. */
 export default function SubNav() {
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-  // On "/" there's no ?category param, but the homepage *is* the "For You"
-  // content (GENERAL's home-embed) — treat it as GENERAL for tab highlighting.
-  const activeCategory =
-    pathname === "/" ? FOR_YOU_CATEGORY : searchParams.get("category");
+  const activeCategory = searchParams.get("category");
 
   return (
     <nav className="sticky top-16 z-30 bg-[#e3dfd7]">
@@ -36,7 +25,7 @@ export default function SubNav() {
                   : "text-neutral-800 border-transparent"
               }`}
             >
-              {TAB_LABELS[category] ?? category}
+              {category}
             </Link>
           );
         })}

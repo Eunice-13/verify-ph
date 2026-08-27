@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RealCategory } from "@/types";
+import { Category } from "@/types";
 import { fetchArticlesServer } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
@@ -14,7 +14,7 @@ export default async function CategoryRow({
   category,
   count = 4,
 }: {
-  category: RealCategory;
+  category: Category;
   count?: number;
 }) {
   const articles = await fetchArticlesServer({ category, limit: count });
