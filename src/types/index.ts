@@ -1,15 +1,58 @@
 // Shared TypeScript types and interfaces.
 
-/** The 5 fixed news categories used across the feed. */
+/**
+ * The 5 nav/URL-level category tabs. Order here drives the tab order in
+ * both Header's dropdown and SubNav (they both just map over this array),
+ * and also the ?category= URL param's set of valid values.
+ *
+ * IMPORTANT: "GENERAL" is NOT a real content category — it's the "For
+ * You" home-embed slot (see FOR_YOU_CATEGORY / isForYouCategory() below).
+ * It is kept in this array only so `/feed?category=GENERAL` remains a
+ * valid, working URL (backward compatibility with existing links/
+ * bookmarks) and so it still gets a nav tab. It intentionally has NO
+ * corresponding value in the database — see ArticleCategory / RealCategory
+ * further down, which are the categories articles can actually be
+ * assigned. Never pass "GENERAL" anywhere a DB category is expected.
+ */
 export const CATEGORIES = [
-  "NEWS & POLITICS",
+  "GENERAL",
   "ECONOMY",
   "HEALTH & SAFETY",
   "LIFESTYLE",
-  "GENERAL",
+  "NEWS & POLITICS",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
+
+/** The "For You" home-embed slot's Category value — see CATEGORIES' doc
+ * comment. Navigating here renders the full HomeView inline rather than a
+ * category-filtered feed (see /feed/page.tsx). */
+export const FOR_YOU_CATEGORY: Category = "GENERAL";
+
+export function isForYouCategory(category: Category | null | undefined): boolean {
+  return category === FOR_YOU_CATEGORY;
+}
+
+/** Type-guard counterpart of isForYouCategory() — narrows to RealCategory
+ * in the negative case, so callers don't need an unsafe cast. */
+export function isRealCategory(category: Category | null | undefined): category is RealCategory {
+  return !!category && category !== FOR_YOU_CATEGORY;
+}
+
+/**
+ * The subset of Category values that correspond to a real, DB-backed
+ * content category — i.e. every tab except the "For You" slot. Use this
+ * (not Category) for anything that queries/filters articles by category,
+ * so "GENERAL" can never be passed where a DB category is expected.
+ */
+export type RealCategory = Exclude<Category, "GENERAL">;
+
+/** REAL_CATEGORIES in on-page display order for the homepage's per-category
+ * preview rows (CategoryRow) — i.e. CATEGORIES with the "For You" slot
+ * removed, since the homepage itself already IS what that slot points to. */
+export const REAL_CATEGORIES: readonly RealCategory[] = CATEGORIES.filter(
+  (c): c is RealCategory => c !== FOR_YOU_CATEGORY
+);
 
 /**
  * Publication status of a news item. Every item rendered in the news UI
@@ -28,7 +71,10 @@ export type ArticleStatus = "VERIFIED" | "PENDING";
  */
 export interface Article {
   id: string | number;
-  category: Category;
+  /** Always a real, DB-backed category — never the "For You" ("GENERAL")
+   * slot, since an Article is by definition a real piece of content that
+   * came from (or is shaped like it came from) the articles table. */
+  category: RealCategory;
   title: string;
   excerpt: string;
   body: string;
@@ -62,13 +108,20 @@ export type VerdictCategory = (typeof VERDICT_CATEGORIES)[number];
 
 // ---- RSS ingestion types ----
 
-/** Category values stored in the database (title-case, not the UI screaming-case). */
+/**
+ * Category values stored in the database (title-case, not the UI
+ * screaming-case). "General" is intentionally NOT a member — it has been
+ * retired as a real content category (see CATEGORIES' doc comment in this
+ * file). Every article must be assigned one of these 4 real categories;
+ * the ingestion pipeline (lib/rss.ts) is written so it can never produce
+ * "General", and the DB's own check constraint enforces this too (see
+ * supabase/migrations/*_retire_general_category.sql).
+ */
 export type ArticleCategory =
   | "News & Politics"
   | "Economy"
   | "Health & Safety"
-  | "Lifestyle"
-  | "General";
+  | "Lifestyle";
 
 /** Shape of a row to be inserted into the Supabase `articles` table. */
 export interface ArticleInsert {

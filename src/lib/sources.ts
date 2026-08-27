@@ -3,24 +3,31 @@ import type { TrustedRssSource, TrustedWebSource } from "@/types";
 // Keep the allowlist in code so the cron route never fetches a URL supplied by
 // a browser request. Categories are assigned per article in rss.ts, not per
 // outlet, so every UI tab can contain articles from multiple publishers.
+// fallbackCategory is used only when NO signal (RSS <category>, URL path,
+// or title/summary keyword match — see mapCategory() in lib/rss.ts) points
+// to a specific category. "General" is retired as a real category (see
+// ArticleCategory in src/types/index.ts), so every fallback below is a
+// real category — "News & Politics" for broad national outlets, since an
+// uncategorized story from a general newsroom is most often a straight
+// news piece rather than economy/health/lifestyle.
 export const TRUSTED_RSS_SOURCES: readonly TrustedRssSource[] = [
   {
     id: "gma-news",
     name: "GMA News",
     feedUrl: "https://data.gmanetwork.com/gno/rss/news/feed.xml",
-    fallbackCategory: "General",
+    fallbackCategory: "News & Politics",
   },
   {
     id: "inquirer",
     name: "Inquirer",
     feedUrl: "https://www.inquirer.net/fullfeed",
-    fallbackCategory: "General",
+    fallbackCategory: "News & Politics",
   },
   {
     id: "rappler",
     name: "Rappler",
     feedUrl: "https://www.rappler.com/rss/",
-    fallbackCategory: "General",
+    fallbackCategory: "News & Politics",
   },
   {
     id: "philstar",
@@ -32,7 +39,7 @@ export const TRUSTED_RSS_SOURCES: readonly TrustedRssSource[] = [
     id: "manila-bulletin",
     name: "Manila Bulletin",
     feedUrl: "https://mb.com.ph/rss/articles",
-    fallbackCategory: "General",
+    fallbackCategory: "News & Politics",
   },
   {
     id: "businessworld",

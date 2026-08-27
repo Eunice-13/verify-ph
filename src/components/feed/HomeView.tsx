@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@/types";
+import { REAL_CATEGORIES } from "@/types";
 import { fetchArticlesServer } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import ArticleSideCard from "@/components/feed/ArticleSideCard";
@@ -7,8 +7,16 @@ import CategoryRow from "@/components/feed/CategoryRow";
 import ClaimStats from "@/components/feed/ClaimStats";
 
 /**
- * Homepage view — mixed-category hero (2 small left + 1 large center + 3
- * side right), followed by a stacked row per category in CATEGORIES order.
+ * Homepage view — mixed-category hero (2 small left + 1 large center + 5
+ * side right), followed by a stacked row per REAL category (News &
+ * Politics, Economy, Health & Safety, Lifestyle) in REAL_CATEGORIES order.
+ *
+ * "GENERAL" is deliberately NOT one of these rows — it's the "For You"
+ * home-embed slot (this exact page, embedded at /feed?category=GENERAL —
+ * see ForYouView.tsx), so rendering it as a row here would just be a
+ * "View More" link back to the page the user is already on. REAL_CATEGORIES
+ * already reflects the requested "News & Politics moves to last" order —
+ * see its derivation from CATEGORIES in src/types/index.ts.
  *
  * Fetches real articles from Supabase. Falls back gracefully to empty
  * skeleton slots if the DB is empty or unavailable.
@@ -73,7 +81,7 @@ export default async function HomeView() {
         </div>
       </section>
 
-      {CATEGORIES.map((category) => (
+      {REAL_CATEGORIES.map((category) => (
         <CategoryRow key={category} category={category} count={4} />
       ))}
 
