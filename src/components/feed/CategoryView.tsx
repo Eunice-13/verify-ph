@@ -11,8 +11,18 @@ import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 /**
  * Category page view. Fetches real articles from Supabase via /api/articles.
  * The first 2 articles render as large cards and the rest in a 4-across grid.
+ *
+ * When `search` is provided (from the global search bar), results are
+ * filtered by keyword; if `category` is omitted, the search spans all
+ * categories.
  */
-export default function CategoryView({ category }: { category: Category }) {
+export default function CategoryView({
+  category,
+  search,
+}: {
+  category?: Category;
+  search?: string;
+}) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +30,7 @@ export default function CategoryView({ category }: { category: Category }) {
     let cancelled = false;
     setLoading(true);
 
-    fetchArticlesClient({ category, limit: 40 }).then((data) => {
+    fetchArticlesClient({ category, search, limit: 40 }).then((data) => {
       if (!cancelled) {
         setArticles(data);
         setLoading(false);
@@ -30,7 +40,7 @@ export default function CategoryView({ category }: { category: Category }) {
     return () => {
       cancelled = true;
     };
-  }, [category]);
+  }, [category, search]);
 
   const large = articles.slice(0, 2);
   const rest = articles.slice(2);
@@ -40,12 +50,16 @@ export default function CategoryView({ category }: { category: Category }) {
   const largeSlotCount = loading ? minLargeSlots : Math.max(large.length, minLargeSlots);
   const restSlotCount = loading ? minRestSlots : Math.max(rest.length, minRestSlots);
 
+  const heading = search
+    ? `Search Results for “${search}”${category ? ` — ${category}` : ""}`
+    : `Today\u2019s Verified Stories from the Philippines${category ? ` \u2014 ${category}` : ""}`;
+
   return (
     <>
       <section className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-baseline justify-between border-b-2 border-neutral-800 pb-2 mb-8">
           <h1 className="font-serif font-bold text-2xl md:text-3xl text-neutral-900">
-            Today&rsquo;s Verified Stories from the Philippines &mdash; {category}
+            {heading}
           </h1>
           <Link
             href="/"
@@ -85,7 +99,9 @@ export default function CategoryView({ category }: { category: Category }) {
         </div>
         {!loading && articles.length === 0 && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
-            No verified stories available in this category yet.
+            {search
+              ? "No verified stories match your search."
+              : "No verified stories available in this category yet."}
           </p>
         )}
       </section>

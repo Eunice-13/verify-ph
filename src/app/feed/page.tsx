@@ -13,11 +13,16 @@ function isCategory(value: string | null): value is Category {
 function FeedContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
-  const category: Category = isCategory(categoryParam) ? categoryParam : CATEGORIES[0];
+  const searchParam = searchParams.get("search");
+  const category: Category | undefined = isCategory(categoryParam)
+    ? categoryParam
+    : searchParam
+      ? undefined
+      : CATEGORIES[0];
 
   return (
-    <ViewTransition transitionKey={category}>
-      <CategoryView category={category} />
+    <ViewTransition transitionKey={`${category ?? "all"}-${searchParam ?? ""}`}>
+      <CategoryView category={category} search={searchParam ?? undefined} />
     </ViewTransition>
   );
 }
