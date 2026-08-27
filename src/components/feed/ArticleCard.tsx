@@ -44,11 +44,11 @@ export default function ArticleCard({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`font-serif font-bold text-neutral-900 ${titleSizeClass} leading-snug hover:text-emerald-800 transition-colors`}
+          className={`block font-serif font-bold text-neutral-900 ${titleSizeClass} leading-snug hover:text-emerald-800 transition-colors line-clamp-2`}
         >
           {article.title}
         </a>
-        <p className="mt-1 text-xs font-sans text-neutral-500">
+        <p className="mt-1 text-xs font-sans text-neutral-500 line-clamp-1">
           Sourced from:{" "}
           <a
             href={url}

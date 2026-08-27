@@ -240,4 +240,8 @@ export interface ClaimCheckerSuccessResponse {
 
 export interface ClaimCheckerErrorResponse {
   error: string;
+  /** ISO timestamp of when the provider pool is expected to free up, set
+   * only when the failure was due to every fallback provider being in
+   * cooldown at once (see getCapacityStatus() in lib/llm-providers.ts). */
+  availableAt?: string | null;
 }
