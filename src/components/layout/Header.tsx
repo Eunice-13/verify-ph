@@ -13,7 +13,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   ECONOMY: "Economy",
   "HEALTH & SAFETY": "Health & Safety",
   LIFESTYLE: "Lifestyle",
-  GENERAL: "General",
+  // "GENERAL" is the "For You" home-embed slot, not a real category — see
+  // FOR_YOU_CATEGORY in src/types/index.ts. Labeled distinctly here so the
+  // nav doesn't imply it's just another content category.
+  GENERAL: "For You",
 };
 
 /** Sticky top header — logo/home link, live date, and hamburger dropdown menu. */
