@@ -4,12 +4,17 @@ import type { ArticleCategory, DbArticle } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+// "General" is intentionally NOT in this list — it's been retired as a
+// real, DB-filterable category (see ArticleCategory / CATEGORIES' doc
+// comment in src/types/index.ts). A request for category=General now
+// correctly 400s here, same as any other invalid category value — the
+// "GENERAL" tab's UI (the "For You" home-embed slot) never calls this
+// route with that value; see ForYouView.tsx / /feed/page.tsx.
 const VALID_CATEGORIES: ArticleCategory[] = [
   "News & Politics",
   "Economy",
   "Health & Safety",
   "Lifestyle",
-  "General",
 ];
 
 const DEFAULT_LIMIT = 20;
