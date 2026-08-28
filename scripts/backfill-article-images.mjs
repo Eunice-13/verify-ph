@@ -50,6 +50,9 @@ const IMAGE_META_NAMES = new Set([
   "twitter:image",
   "twitter:image:src",
 ]);
+const IMAGE_URL_ATTRIBUTES = ["data-src", "data-lazy-src", "data-original", "data-image", "src"];
+const ARTICLE_SCHEMA_TYPES = new Set(["article", "newsarticle", "reportagenewsarticle"]);
+const NON_ARTICLE_IMAGE_HINTS = /(?:logo|icon|avatar|profile|author|advertisement|\/ads?\/|tracking|pixel|spacer|placeholder)/i;
 
 function toHttpUrl(value, baseUrl) {
   if (!value) return null;
@@ -72,6 +75,87 @@ function metaAttribute(tag, name) {
   return match?.[1] ?? match?.[2] ?? null;
 }
 
+function imageUrlFromTag(tag, pageUrl) {
+  for (const attribute of IMAGE_URL_ATTRIBUTES) {
+    const imageUrl = toHttpUrl(metaAttribute(tag, attribute), pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) return imageUrl;
+  }
+
+  const srcSet = metaAttribute(tag, "data-srcset") ?? metaAttribute(tag, "srcset");
+  if (!srcSet) return null;
+
+  for (const candidate of srcSet.split(",").map((value) => value.trim().split(/\s+/)[0]).reverse()) {
+    const imageUrl = toHttpUrl(candidate, pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) return imageUrl;
+  }
+
+  return null;
+}
+
+function imageUrlFromImageValue(value, pageUrl) {
+  if (typeof value === "string") return toHttpUrl(value, pageUrl);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const imageUrl = imageUrlFromImageValue(item, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    return imageUrlFromImageValue(value.url, pageUrl) ?? imageUrlFromImageValue(value.contentUrl, pageUrl);
+  }
+  return null;
+}
+
+function imageUrlFromArticleSchema(value, pageUrl) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const imageUrl = imageUrlFromArticleSchema(item, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+    return null;
+  }
+  if (!value || typeof value !== "object") return null;
+
+  const types = Array.isArray(value["@type"]) ? value["@type"] : [value["@type"]];
+  if (types.some((type) => typeof type === "string" && ARTICLE_SCHEMA_TYPES.has(type.toLowerCase()))) {
+    const imageUrl = imageUrlFromImageValue(value.image, pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) return imageUrl;
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const imageUrl = imageUrlFromArticleSchema(nestedValue, pageUrl);
+    if (imageUrl) return imageUrl;
+  }
+  return null;
+}
+
+function imageUrlFromJsonLd(html, pageUrl) {
+  const scripts = html.match(/<script\b[^>]*type\s*=\s*["']application\/ld\+json[^"']*["'][^>]*>[\s\S]*?<\/script>/gi) ?? [];
+  for (const script of scripts) {
+    const content = script.replace(/^<script\b[^>]*>/i, "").replace(/<\/script>$/i, "").trim();
+    try {
+      const imageUrl = imageUrlFromArticleSchema(JSON.parse(content), pageUrl);
+      if (imageUrl) return imageUrl;
+    } catch {
+      // Ignore malformed publisher JSON-LD and keep checking the page.
+    }
+  }
+  return null;
+}
+
+function imageUrlFromArticleBody(html, pageUrl) {
+  const contentBlocks = html.match(/<(?:article|main|figure)\b[^>]*>[\s\S]*?<\/(?:article|main|figure)>/gi) ?? [];
+  for (const block of contentBlocks) {
+    const imageTags = block.match(/<img\b[^>]*>/gi) ?? [];
+    for (const tag of imageTags) {
+      const imageUrl = imageUrlFromTag(tag, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+  }
+  return null;
+}
+
 function publisherImageUrlFromHtml(html, pageUrl) {
   const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
 
@@ -83,7 +167,7 @@ function publisherImageUrlFromHtml(html, pageUrl) {
     if (imageUrl) return imageUrl;
   }
 
-  return null;
+  return imageUrlFromJsonLd(html, pageUrl) ?? imageUrlFromArticleBody(html, pageUrl);
 }
 
 async function findPublisherImageUrl(articleUrl) {

@@ -8,6 +8,22 @@ const IMAGE_META_NAMES = new Set([
   "twitter:image:src",
 ]);
 
+const IMAGE_URL_ATTRIBUTES = [
+  "data-src",
+  "data-lazy-src",
+  "data-original",
+  "data-image",
+  "src",
+] as const;
+
+const ARTICLE_SCHEMA_TYPES = new Set([
+  "article",
+  "newsarticle",
+  "reportagenewsarticle",
+]);
+
+const NON_ARTICLE_IMAGE_HINTS = /(?:logo|icon|avatar|profile|author|advertisement|\/ads?\/|tracking|pixel|spacer|placeholder)/i;
+
 function toHttpUrl(value: string | undefined, baseUrl?: string): string | null {
   if (!value) {
     return null;
@@ -36,10 +52,136 @@ function metaAttribute(tag: string, name: string): string | null {
   return match?.[1] ?? match?.[2] ?? null;
 }
 
+function imageUrlFromTag(tag: string, pageUrl: string): string | null {
+  for (const attribute of IMAGE_URL_ATTRIBUTES) {
+    const imageUrl = toHttpUrl(metaAttribute(tag, attribute) ?? undefined, pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) {
+      return imageUrl;
+    }
+  }
+
+  const srcSet = metaAttribute(tag, "data-srcset") ?? metaAttribute(tag, "srcset");
+  if (!srcSet) {
+    return null;
+  }
+
+  // Publishers generally list srcset candidates from smaller to larger. Pick
+  // the last usable one so a card does not receive a tiny thumbnail.
+  const candidates = srcSet
+    .split(",")
+    .map((candidate) => candidate.trim().split(/\s+/)[0])
+    .reverse();
+
+  for (const candidate of candidates) {
+    const imageUrl = toHttpUrl(candidate, pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) {
+      return imageUrl;
+    }
+  }
+
+  return null;
+}
+
+function imageUrlFromImageValue(value: unknown, pageUrl: string): string | null {
+  if (typeof value === "string") {
+    return toHttpUrl(value, pageUrl);
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const imageUrl = imageUrlFromImageValue(item, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+    return null;
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = value as { url?: unknown; contentUrl?: unknown };
+    return (
+      imageUrlFromImageValue(candidate.url, pageUrl) ??
+      imageUrlFromImageValue(candidate.contentUrl, pageUrl)
+    );
+  }
+
+  return null;
+}
+
+function hasArticleSchemaType(value: unknown): boolean {
+  const types = Array.isArray(value) ? value : [value];
+  return types.some(
+    (type) => typeof type === "string" && ARTICLE_SCHEMA_TYPES.has(type.toLowerCase()),
+  );
+}
+
+function imageUrlFromArticleSchema(value: unknown, pageUrl: string): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const imageUrl = imageUrlFromArticleSchema(item, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+    return null;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (hasArticleSchemaType(record["@type"])) {
+    const imageUrl = imageUrlFromImageValue(record.image, pageUrl);
+    if (imageUrl && !NON_ARTICLE_IMAGE_HINTS.test(imageUrl)) {
+      return imageUrl;
+    }
+  }
+
+  for (const nestedValue of Object.values(record)) {
+    const imageUrl = imageUrlFromArticleSchema(nestedValue, pageUrl);
+    if (imageUrl) return imageUrl;
+  }
+
+  return null;
+}
+
+function imageUrlFromJsonLd(html: string, pageUrl: string): string | null {
+  const scripts = html.match(/<script\b[^>]*type\s*=\s*["']application\/ld\+json[^"']*["'][^>]*>[\s\S]*?<\/script>/gi) ?? [];
+
+  for (const script of scripts) {
+    const content = script
+      .replace(/^<script\b[^>]*>/i, "")
+      .replace(/<\/script>$/i, "")
+      .trim();
+
+    try {
+      const imageUrl = imageUrlFromArticleSchema(JSON.parse(content), pageUrl);
+      if (imageUrl) return imageUrl;
+    } catch {
+      // Malformed JSON-LD should not stop us from checking the article body.
+    }
+  }
+
+  return null;
+}
+
+function imageUrlFromArticleBody(html: string, pageUrl: string): string | null {
+  // Prefer a semantic article/main container. Some publishers use neither,
+  // so figure elements are the next safest content-focused fallback.
+  const contentBlocks = html.match(/<(?:article|main|figure)\b[^>]*>[\s\S]*?<\/(?:article|main|figure)>/gi) ?? [];
+
+  for (const block of contentBlocks) {
+    const imageTags = block.match(/<img\b[^>]*>/gi) ?? [];
+    for (const tag of imageTags) {
+      const imageUrl = imageUrlFromTag(tag, pageUrl);
+      if (imageUrl) return imageUrl;
+    }
+  }
+
+  return null;
+}
+
 /**
- * Extracts a publisher-provided article image from Open Graph or Twitter
- * metadata. The returned URL is always an http(s) URL and supports relative
- * image paths by resolving them against the final article page URL.
+ * Extracts a publisher-provided article image. It prefers Open Graph/Twitter
+ * metadata, then NewsArticle JSON-LD, then a real image in the article body.
+ * The returned URL is always an http(s) URL and supports relative paths.
  */
 export function publisherImageUrlFromHtml(html: string, pageUrl: string): string | null {
   const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
@@ -57,7 +199,7 @@ export function publisherImageUrlFromHtml(html: string, pageUrl: string): string
     }
   }
 
-  return null;
+  return imageUrlFromJsonLd(html, pageUrl) ?? imageUrlFromArticleBody(html, pageUrl);
 }
 
 /**
