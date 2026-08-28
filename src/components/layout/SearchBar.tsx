@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 
 /**
@@ -16,10 +16,20 @@ export default function SearchBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
+  const lastUrlSearchRef = useRef<string | null>(null);
 
-  // Keep the input in sync with the URL when already on a search results page.
+  // Keep the input in sync with the URL's `search` param, but only when it
+  // actually changes from a navigation (e.g. clicking a link that carries a
+  // search param, or landing directly on a search results URL). This lets
+  // the typed keyword persist in the box after submitting, and remain
+  // editable (including backspacing it down to start a new search) without
+  // being reset out from under the user on every render.
   useEffect(() => {
-    setQuery(pathname === "/feed" ? searchParams.get("search") ?? "" : "");
+    const urlSearch = pathname === "/feed" ? searchParams.get("search") ?? "" : "";
+    if (urlSearch !== lastUrlSearchRef.current) {
+      lastUrlSearchRef.current = urlSearch;
+      setQuery(urlSearch);
+    }
   }, [pathname, searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
