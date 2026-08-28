@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase";
-import { TRUSTED_RSS_SOURCES } from "@/lib/sources";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const supabase = createSupabaseServiceClient();
 
-  const { count, error } = await supabase
-    .from("articles")
-    .select("id", { count: "exact", head: true });
+  const [checkedResult, verifiedResult, contradictedResult] = await Promise.all([
+    supabase.from("claims").select("id", { count: "exact", head: true }),
+    supabase
+      .from("claims")
+      .select("id", { count: "exact", head: true })
+      .eq("verdict", "Verified"),
+    supabase
+      .from("claims")
+      .select("id", { count: "exact", head: true })
+      .eq("verdict", "Contradicted"),
+  ]);
 
-  if (error) {
-    console.error("[api/stats] query failed:", error);
+  const errors = [checkedResult.error, verifiedResult.error, contradictedResult.error].filter(
+    Boolean,
+  );
+
+  if (errors.length > 0) {
+    console.error("[api/stats] claims query failed:", errors);
 
     return NextResponse.json(
       { error: "Failed to fetch stats." },
@@ -20,12 +31,9 @@ export async function GET() {
     );
   }
 
-  const activeSourceIds = new Set(TRUSTED_RSS_SOURCES.map((source) => source.id));
-  const articleCount = count ?? 0;
-
   return NextResponse.json({
-    claimsReported: articleCount,
-    claimsVerified: articleCount,
-    sourcesTracked: activeSourceIds.size,
+    claimsChecked: checkedResult.count ?? 0,
+    claimsVerified: verifiedResult.count ?? 0,
+    contradictedClaims: contradictedResult.count ?? 0,
   });
 }
