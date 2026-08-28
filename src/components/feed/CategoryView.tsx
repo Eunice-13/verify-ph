@@ -63,8 +63,8 @@ export default function CategoryView({
   const large = articles.slice(0, 2);
   const rest = articles.slice(2);
 
-  const largeSlotCount = loading ? 2 : large.length;
-  const restSlotCount = loading ? 4 : rest.length;
+  const largeSlotCount = large.length;
+  const restSlotCount = rest.length;
 
   const heading = search
     ? `Search Results for "${search}"${category ? ` \u2014 ${category}` : ""}`
@@ -86,7 +86,7 @@ export default function CategoryView({
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {Array.from({ length: Math.max(largeSlotCount, 2) }, (_, i) =>
+          {Array.from({ length: largeSlotCount }, (_, i) =>
             large[i] ? (
               <ArticleCard
                 key={large[i].id}
@@ -100,7 +100,7 @@ export default function CategoryView({
           )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-          {Array.from({ length: Math.max(restSlotCount, 4) }, (_, i) =>
+          {Array.from({ length: restSlotCount }, (_, i) =>
             rest[i] ? (
               <ArticleCard
                 key={rest[i].id}
