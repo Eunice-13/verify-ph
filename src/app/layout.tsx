@@ -18,6 +18,10 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "VerifyPH — Civic News & AI Claim Checker",
   description: "Civic news application & AI-assisted claim checker.",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
