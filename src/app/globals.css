@@ -127,21 +127,8 @@ body {
 }
 
 /* ---- Floating claim-checker bar (home + category pages) ----
-   Always position: fixed relative to the viewport. JS (FloatingClaimBar.tsx)
-   dynamically raises its `bottom` inline style so it never overlaps the
-   footer once the footer scrolls into view. ---- */
-#floating-claim-bar {
-  left: 0;
-  right: 0;
-  z-index: 20;
-  padding: 0 1.5rem;
-  transition: bottom 150ms ease-out;
-}
-
-#floating-claim-bar.claim-bar-fixed {
-  position: fixed;
-  bottom: 2rem;
-}
+   Uses IntersectionObserver to dock/undock. Positioning is handled
+   entirely via Tailwind classes in the component now. ---- */
 
 /* ---- Claim result modal/overlay: centered vertically between the
    navbar+subnav and the bottom of the viewport with equal spacing. ---- */

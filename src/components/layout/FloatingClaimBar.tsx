@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { FormEvent, KeyboardEvent, useEffect, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Send, Loader2, X } from "lucide-react";
 import { useAutoResizeTextarea } from "@/lib/useAutoResizeTextarea";
 import ClaimResult from "@/components/claim/ClaimResult";
@@ -10,18 +10,24 @@ import { submitClaim } from "@/lib/claimChecker";
 import type { Claim } from "@/types";
 
 /**
- * Floating / locking claim-checker input bar shown on the home and feed
- * (category) pages. Follows the viewport while scrolling, then locks in
- * place near the bottom of the document so it never overlaps the footer.
- * Hidden entirely on the dedicated Claim Checker page and the Awareness
- * ("Why Verification Matters") page, which has its own dedicated CTAs.
+ * Claim-checker input bar with "docking" scroll behavior:
+ *
+ * - A placeholder div ("dock zone") lives in normal document flow between
+ *   the main content and the footer.
+ * - When the dock zone is fully visible in the viewport, the bar sits
+ *   inside it (position: static, normal flow — no overlap possible).
+ * - When the dock zone scrolls out of view (user scrolled up away from it),
+ *   the bar becomes position: fixed at the viewport bottom so it's always
+ *   reachable.
+ *
+ * Uses IntersectionObserver with threshold: 1.0 so it only "docks" when
+ * the entire placeholder is visible — prevents footer overlap entirely.
  */
 export default function FloatingClaimBar() {
   const pathname = usePathname();
 
   if (pathname === "/claim-check" || pathname === "/about") return null;
 
-  // Remount on route change via `key` so all local state resets cleanly.
   return <FloatingClaimBarContent key={pathname} />;
 }
 
@@ -31,40 +37,29 @@ function FloatingClaimBarContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isDocked, setIsDocked] = useState(false);
+  const dockRef = useRef<HTMLDivElement>(null);
   const { ref: textareaRef, resize } = useAutoResizeTextarea();
 
-  // Solid/opaque whenever the user is actively engaging with the bar
-  // (hovering, focused inside it, has typed something, or a request is
-  // in flight) — glassy/translucent only when it's sitting there idle, so
-  // it never blocks reading article titles behind it, but also never
-  // reverts to glass mid-typing just because the mouse moved off it.
   const isExpanded = isHovered || value.trim().length > 0 || loading;
 
+  // Neon variant when docked (near stats), default when floating
+  const isNearStats = isDocked;
+
+  // IntersectionObserver: dock when the placeholder is fully in view
   useEffect(() => {
-    const BASE_BOTTOM = 32; // matches claim-bar-fixed's default bottom offset (2rem)
-    const GAP_ABOVE_FOOTER = 32;
+    const dockZone = dockRef.current;
+    if (!dockZone) return;
 
-    const updatePosition = () => {
-      const bar = document.getElementById("floating-claim-bar");
-      const footer = document.getElementById("site-footer");
-      if (!bar) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsDocked(entry.isIntersecting && entry.intersectionRatio >= 0.99);
+      },
+      { threshold: 1.0 }
+    );
 
-      const footerRect = footer?.getBoundingClientRect();
-      const footerVisibleHeight = footerRect
-        ? Math.max(0, window.innerHeight - footerRect.top)
-        : 0;
-
-      const bottomOffset = Math.max(BASE_BOTTOM, footerVisibleHeight + GAP_ABOVE_FOOTER);
-      bar.style.bottom = `${bottomOffset}px`;
-    };
-
-    updatePosition();
-    window.addEventListener("scroll", updatePosition, { passive: true });
-    window.addEventListener("resize", updatePosition);
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
+    observer.observe(dockZone);
+    return () => observer.disconnect();
   }, []);
 
   // Lock page scroll while the result modal is open.
@@ -104,8 +99,12 @@ function FloatingClaimBarContent() {
     }
   };
 
-  return (
-    <div id="floating-claim-bar" className="claim-bar-fixed">
+  const formClasses = isNearStats
+    ? `claim-bar-glass flex items-center gap-3 rounded-3xl border-2 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.45)] px-5 py-3 max-w-2xl mx-auto transition-all duration-300 ${isExpanded ? "claim-bar-glass-solid" : ""}`
+    : `claim-bar-glass flex items-center gap-3 rounded-3xl border-2 border-transparent px-5 py-3 max-w-2xl mx-auto transition-all duration-300 ${isExpanded ? "claim-bar-glass-solid" : ""}`;
+
+  const barContent = (
+    <>
       {loading && (
         <div className="max-w-2xl mx-auto mb-3">
           <ClaimProgress />
@@ -114,9 +113,8 @@ function FloatingClaimBarContent() {
 
       <form
         onSubmit={handleSubmit}
-        className={`claim-bar-glass flex items-center gap-3 rounded-3xl border-2 border-transparent px-5 py-3 max-w-2xl mx-auto claim-input-wrap transition-all duration-300 ${
-          isExpanded ? "claim-bar-glass-solid" : ""
-        }`}
+        className={formClasses}
+        data-context={isNearStats ? "hero" : "default"}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -134,8 +132,8 @@ function FloatingClaimBarContent() {
               e.currentTarget.form?.requestSubmit();
             }
           }}
-          placeholder="Paste a claim, headline, or link to fact-check…"
-          className="flex-1 bg-transparent outline-none font-sans text-sm text-neutral-700 placeholder:text-neutral-400 resize-none max-h-40 overflow-y-auto leading-relaxed self-center"
+          placeholder="Paste a claim, headline, or link to fact-check..."
+          className="flex-1 bg-transparent outline-none font-sans text-sm text-neutral-700 placeholder:text-neutral-400 resize-none max-h-40 overflow-y-auto leading-normal py-0 self-center"
           disabled={loading}
         />
         <button
@@ -182,6 +180,37 @@ function FloatingClaimBarContent() {
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Dock zone placeholder — reserves space in the layout so content
+          doesn't jump when the bar docks/undocks. Matches bar height. */}
+      <div
+        ref={dockRef}
+        id="input-dock-zone"
+        className="w-full pt-0 pb-5 px-1"
+        aria-hidden="true"
+      >
+        {isDocked && (
+          <div id="floating-claim-bar" className="w-full">
+            {barContent}
+          </div>
+        )}
+        {/* Invisible spacer when floating so layout doesn't shift */}
+        {!isDocked && <div className="max-w-2xl mx-auto h-[52px]" />}
+      </div>
+
+      {/* Floating version — fixed to viewport bottom when dock zone not visible */}
+      {!isDocked && (
+        <div
+          id="floating-claim-bar"
+          className="fixed bottom-6 left-0 right-0 z-40 px-6"
+        >
+          {barContent}
+        </div>
+      )}
+    </>
   );
 }

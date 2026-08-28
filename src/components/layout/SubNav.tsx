@@ -22,7 +22,7 @@ export default function SubNav() {
 
   return (
     <nav className="sticky top-16 z-30 bg-[#e3dfd7]">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-6 sm:gap-0 sm:justify-between overflow-x-auto">
+      <div className="max-w-6xl mx-auto px-2 sm:px-6 h-14 flex items-center gap-1 sm:gap-0 sm:justify-between overflow-x-auto">
         {CATEGORIES.map((category) => {
           const isActive = category === activeCategory;
           return (
@@ -30,13 +30,16 @@ export default function SubNav() {
               key={category}
               href={`/feed?category=${encodeURIComponent(category)}`}
               aria-current={isActive ? "page" : undefined}
-              className={`cursor-pointer shrink-0 font-serif font-bold text-sm md:text-base whitespace-nowrap hover:text-emerald-900 h-full flex items-center border-b-2 transition-colors ${
+              prefetch
+              className={`cursor-pointer shrink-0 select-none font-serif font-bold text-sm md:text-base whitespace-nowrap h-full min-w-[44px] flex items-center justify-center px-3 sm:px-4 border-b-2 transition-colors duration-150 ${
                 isActive
                   ? "text-emerald-900 border-emerald-700"
-                  : "text-neutral-800 border-transparent"
+                  : "group text-neutral-800 border-transparent hover:text-emerald-900"
               }`}
             >
-              {TAB_LABELS[category] ?? category}
+              <span className={`inline-block transition-transform duration-200 ease-out will-change-transform ${isActive ? "" : "group-hover:scale-110 group-active:scale-95"}`}>
+                {TAB_LABELS[category] ?? category}
+              </span>
             </Link>
           );
         })}

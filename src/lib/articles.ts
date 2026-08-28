@@ -74,6 +74,7 @@ function dbArticleToFrontEnd(row: DbArticle): Article {
 
 export async function fetchArticlesServer(options?: {
   category?: RealCategory | null;
+  search?: string | null;
   limit?: number;
   offset?: number;
 }): Promise<Article[]> {
@@ -96,6 +97,12 @@ export async function fetchArticlesServer(options?: {
       if (dbCategory) {
         query = query.eq("category", dbCategory);
       }
+    }
+
+    const search = options?.search?.trim();
+    if (search) {
+      const escaped = search.replace(/[%_,]/g, (m) => `\\${m}`);
+      query = query.or(`title.ilike.%${escaped}%,summary.ilike.%${escaped}%`);
     }
 
     const { data, error } = await query;

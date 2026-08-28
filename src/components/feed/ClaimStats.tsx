@@ -88,7 +88,8 @@ function StatCard({
 
   return (
     <div
-      className={`stat-card w-full rounded-2xl border-2 ${borderClass} bg-white px-6 py-7 text-center ${isPulsing ? pulseClass : ""}`}
+      className={`stat-card w-full rounded-2xl border-2 ${borderClass} bg-white px-6 py-7 text-center cursor-pointer
+        transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:border-opacity-100 ${isPulsing ? pulseClass : ""}`}
       onAnimationEnd={() => setIsPulsing(false)}
     >
       <span className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${iconBgClass} text-white mb-4`}>
@@ -158,11 +159,11 @@ export default function ClaimStats() {
   }, []);
 
   return (
-    <section className="max-w-6xl mx-auto px-6 py-10">
+    <section id="claim-stats-section" className="max-w-6xl mx-auto px-6 pt-10 pb-10">
       <hr className="border-t-2 border-neutral-800 mb-10" />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-6">
         <StatCard
-          borderClass="border-blue-700"
+          borderClass="border-blue-700 hover:border-blue-500"
           iconBgClass="bg-blue-600"
           pulseClass="stat-pulse-blue"
           Icon={ClipboardCheck}
@@ -172,7 +173,7 @@ export default function ClaimStats() {
           pulseToken={pulseTokens.claimsChecked}
         />
         <StatCard
-          borderClass="border-emerald-800"
+          borderClass="border-emerald-800 hover:border-emerald-500"
           iconBgClass="bg-emerald-600"
           pulseClass="stat-pulse-green"
           Icon={Check}
@@ -182,7 +183,7 @@ export default function ClaimStats() {
           pulseToken={pulseTokens.claimsVerified}
         />
         <StatCard
-          borderClass="border-red-700"
+          borderClass="border-red-700 hover:border-red-500"
           iconBgClass="bg-red-600"
           pulseClass="stat-pulse-red"
           Icon={X}

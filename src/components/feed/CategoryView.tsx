@@ -1,54 +1,38 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Home } from "lucide-react";
-import { Article, RealCategory } from "@/types";
-import { fetchArticlesClient } from "@/lib/articles";
+import { RealCategory } from "@/types";
+import { fetchArticlesServer } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
 import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 
 /**
- * Category page view. Fetches real articles from Supabase via /api/articles.
- * The first 2 articles render as large cards and the rest in a 4-across grid.
+ * Category page view. Fetches real articles from Supabase server-side
+ * (same pattern as HomeView/CategoryRow) so the full article grid is
+ * already in the HTML on first paint — no client-side fetch-then-render
+ * round trip, which is what made switching category tabs feel delayed.
+ * The first 2 articles render as large cards and the rest in a 4-across
+ * grid.
  *
  * When `search` is provided (from the global search bar), results are
  * filtered by keyword; if `category` is omitted, the search spans all
  * categories.
  */
-export default function CategoryView({
+export default async function CategoryView({
   category,
   search,
 }: {
   category?: RealCategory;
   search?: string;
 }) {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    fetchArticlesClient({ category, search, limit: 40 }).then((data) => {
-      if (!cancelled) {
-        setArticles(data);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [category, search]);
+  const articles = await fetchArticlesServer({ category, search, limit: 40 });
 
   const large = articles.slice(0, 2);
   const rest = articles.slice(2);
 
   const minLargeSlots = 2;
   const minRestSlots = 4;
-  const largeSlotCount = loading ? minLargeSlots : Math.max(large.length, minLargeSlots);
-  const restSlotCount = loading ? minRestSlots : Math.max(rest.length, minRestSlots);
+  const largeSlotCount = Math.max(large.length, minLargeSlots);
+  const restSlotCount = Math.max(rest.length, minRestSlots);
 
   const heading = search
     ? `Search Results for “${search}”${category ? ` — ${category}` : ""}`
@@ -97,7 +81,7 @@ export default function CategoryView({
             )
           )}
         </div>
-        {!loading && articles.length === 0 && (
+        {articles.length === 0 && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
             {search
               ? "No verified stories match your search."
