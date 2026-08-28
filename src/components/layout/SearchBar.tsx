@@ -7,8 +7,9 @@ import { Search } from "lucide-react";
 /**
  * Global keyword search bar — sits beside the hamburger menu in the header
  * on every page. Submitting navigates to /feed with a `search` query param;
- * the active category (if any) is preserved, otherwise it searches across
- * all categories.
+ * all categories. Search must not inherit the currently open category tab:
+ * a real Economy story should still be found when the visitor starts from
+ * the Lifestyle tab.
  */
 export default function SearchBar() {
   const router = useRouter();
@@ -26,12 +27,7 @@ export default function SearchBar() {
     const trimmed = query.trim();
     if (!trimmed) return;
 
-    const params = new URLSearchParams();
-    const currentCategory = pathname === "/feed" ? searchParams.get("category") : null;
-    if (currentCategory) params.set("category", currentCategory);
-    params.set("search", trimmed);
-
-    router.push(`/feed?${params.toString()}`);
+    router.push(`/feed?search=${encodeURIComponent(trimmed)}`);
   };
 
   return (

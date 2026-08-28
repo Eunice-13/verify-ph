@@ -132,11 +132,27 @@ export async function fetchArticlesClient(options?: {
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.offset) params.set("offset", String(options.offset));
 
-  const res = await fetch(`/api/articles?${params.toString()}`);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15_000);
 
-  if (!res.ok) return [];
+  try {
+    const res = await fetch(`/api/articles?${params.toString()}`, {
+      signal: controller.signal,
+    });
 
-  const json = await res.json();
-  const rows = (json.articles ?? []) as DbArticle[];
-  return rows.map(dbArticleToFrontEnd);
+    if (!res.ok) {
+      throw new Error("Unable to load articles.");
+    }
+
+    const json = await res.json();
+    const rows = (json.articles ?? []) as DbArticle[];
+    return rows.map(dbArticleToFrontEnd);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Article search timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
