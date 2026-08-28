@@ -30,7 +30,11 @@ export default function ArticleCard({
         aria-label={`Read ${article.title}`}
         className={`block rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)] ${imgHeightClass} relative`}
       >
-        <ArticleImage imageUrl={article.imageUrl} title={article.title} />
+        <ArticleImage
+          imageUrl={article.imageUrl}
+          title={article.title}
+          providerName={provider}
+        />
       </a>
 
       <div className="pt-2.5">

@@ -24,7 +24,11 @@ export default function ArticleSideCard({ article }: { article: Article }) {
         aria-label={`Read ${article.title}`}
         className="relative block w-24 h-20 shrink-0 rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
       >
-        <ArticleImage imageUrl={article.imageUrl} title={article.title} />
+        <ArticleImage
+          imageUrl={article.imageUrl}
+          title={article.title}
+          providerName={provider}
+        />
         <div
           className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-end rounded-xl bg-gradient-to-t from-black/90 via-black/50 to-black/10 p-1.5
                  opacity-0 scale-[0.98] transition-all duration-[400ms] ease-in-out group-hover:opacity-100 group-hover:scale-100"
