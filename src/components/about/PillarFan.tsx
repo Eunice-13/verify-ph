@@ -41,7 +41,7 @@ export default function PillarFan({ pillars }: { pillars: PillarData[] }) {
       className={
         isDesktop
           ? "relative mx-auto flex h-[440px] max-w-5xl items-center justify-center"
-          : "flex flex-col gap-5 px-4 sm:px-6"
+          : "flex flex-col gap-6"
       }
     >
       {pillars.map((pillar, i) => {
@@ -82,8 +82,8 @@ export default function PillarFan({ pillars }: { pillars: PillarData[] }) {
             whileTap={{ scale: 0.96 }}
             className={
               isDesktop
-                ? "group absolute w-72 sm:w-80 cursor-pointer overflow-hidden rounded-2xl border-2 border-emerald-900/80 bg-white shadow-[0_22px_44px_rgba(0,0,0,0.24)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-                : "group relative block w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-emerald-900/80 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                ? "group absolute w-80 cursor-pointer overflow-hidden rounded-2xl border-2 border-emerald-900/80 bg-white shadow-[0_22px_44px_rgba(0,0,0,0.24)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                : "group relative block cursor-pointer overflow-hidden rounded-2xl border-2 border-emerald-900/80 bg-white shadow-[0_10px_24px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
             }
             style={isDesktop ? { zIndex: fan.z } : undefined}
           >

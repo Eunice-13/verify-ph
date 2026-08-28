@@ -6,6 +6,7 @@ import { Home } from "lucide-react";
 import { Article, RealCategory } from "@/types";
 import { fetchArticlesClient } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
+import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 
 /**
  * Category page view. Fetches articles client-side via /api/articles with
@@ -90,7 +91,21 @@ export default function CategoryView({
             <Home className="w-4 h-4" strokeWidth={2} />
           </Link>
         </div>
-        {largeSlotCount > 0 && (
+        {loading && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {Array.from({ length: 2 }, (_, i) => (
+                <EmptyCardSkeleton key={`lg-skel-${i}`} heightClass="h-64 md:h-80" />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
+              {Array.from({ length: 4 }, (_, i) => (
+                <EmptyCardSkeleton key={`sm-skel-${i}`} heightClass="h-40 md:h-44" />
+              ))}
+            </div>
+          </>
+        )}
+        {!loading && largeSlotCount > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {Array.from({ length: largeSlotCount }, (_, i) => (
               <ArticleCard
@@ -102,7 +117,7 @@ export default function CategoryView({
             ))}
           </div>
         )}
-        {restSlotCount > 0 && (
+        {!loading && restSlotCount > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
             {Array.from({ length: restSlotCount }, (_, i) => (
               <ArticleCard

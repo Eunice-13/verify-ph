@@ -53,7 +53,7 @@ const STATS: StatCardData[] = [
     source: "Pulse Asia",
     url: "https://www.cnnphilippines.com/news/2022/10/11/pulse-asia-survey-fake-news.html",
     size: "hero",
-    placementClass: "col-span-2 md:col-start-1 md:row-start-1 md:col-span-2 md:row-span-2",
+    placementClass: "md:col-start-1 md:row-start-1 md:col-span-2 md:row-span-2",
   },
   {
     number: "6×",
@@ -63,7 +63,7 @@ const STATS: StatCardData[] = [
     source: "MIT",
     url: "https://mitsloan.mit.edu/ideas-made-to-matter/study-false-news-spreads-faster-truth",
     size: "medium",
-    placementClass: "col-span-2 md:col-start-3 md:row-start-1 md:col-span-2 md:row-span-1",
+    placementClass: "md:col-start-3 md:row-start-1 md:col-span-2 md:row-span-1",
   },
   {
     number: "58%",
@@ -228,9 +228,9 @@ export default function AboutView() {
     <>
 
       {/* ---- Title ---- */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
-        <h1 className="font-serif font-bold text-2xl sm:text-3xl md:text-5xl text-center leading-tight bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-transparent">
-          The Information Crisis: Why Verification Matters
+      <div className="max-w-4xl mx-auto px-6 pt-10 mb-4">
+        <h1 className="font-serif font-bold text-3xl md:text-5xl text-center leading-tight bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-transparent">
+          The Information Crisis:<br />Why Verification Matters
         </h1>
       </div>
 
@@ -254,7 +254,7 @@ export default function AboutView() {
           />
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-10 text-center relative">
+        <div className="max-w-3xl mx-auto px-6 pt-6 pb-10 text-center relative">
           <motion.div
             className="inline-flex items-center gap-2 rounded-full border border-emerald-700/40 bg-emerald-50 px-4 py-1.5 mb-6"
             animate={{
@@ -343,7 +343,7 @@ export default function AboutView() {
       {/* ---- Stats bento grid ---- */}
       <motion.section
         id="stats-grid"
-        className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14"
+        className="max-w-6xl mx-auto px-6 py-14"
         variants={staggerContainer}
         initial="hidden"
         whileInView="visible"
@@ -362,7 +362,7 @@ export default function AboutView() {
           The Damage, Exposed.
         </motion.h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[minmax(150px,1fr)] gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 md:auto-rows-[minmax(150px,1fr)] gap-4">
           {STATS.map((stat) => (
             <motion.div key={stat.number + stat.source} variants={fadeUpItem} className={stat.placementClass}>
               <TiltCard href={stat.url} className="h-full p-5">
@@ -408,9 +408,9 @@ export default function AboutView() {
       </motion.section>
 
       {/* ---- Victim pillars — fanned card hand ---- */}
-      <section className="bg-emerald-950/[0.03] py-10 sm:py-14">
+      <section className="bg-emerald-950/[0.03] py-14">
         <motion.div
-          className="max-w-6xl mx-auto px-4 sm:px-6"
+          className="max-w-6xl mx-auto px-1"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -434,13 +434,13 @@ export default function AboutView() {
       </section>
 
       {/* ---- Virality pipeline — wide bento banner ---- */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+      <section className="max-w-6xl mx-auto px-6 py-16">
         <motion.div
           initial={{ opacity: 0, y: 28 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="rounded-2xl sm:rounded-3xl border-2 border-neutral-200 bg-white/70 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.06)] px-4 sm:px-6 md:px-10 py-8 sm:py-11"
+          className="rounded-3xl border-2 border-neutral-200 bg-white/70 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.06)] px-6 md:px-10 py-11"
         >
           <p className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-emerald-700 text-center mb-2">
             The Anatomy of a Lie
@@ -503,6 +503,7 @@ export default function AboutView() {
       <section className="bg-emerald-950 text-white">
         {/* ---- Newspaper-unfold finale + popup CTA (routes to "/") ---- */}
         <NewspaperReveal />
+        <hr className="border-t border-white/20 max-w-3xl mx-auto" />
       </section>
     </>
   );
