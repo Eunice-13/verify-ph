@@ -32,6 +32,9 @@ export default function CategoryView({
     const loadArticles = async () => {
       setLoading(true);
       setError(null);
+      // Do not leave cards from a previous query visible while a new search
+      // is loading. They can make an unrelated search look like it matched.
+      setArticles([]);
 
       try {
         const data = await fetchArticlesClient({ category, search, limit: 40 });

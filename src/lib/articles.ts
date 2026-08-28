@@ -138,6 +138,9 @@ export async function fetchArticlesClient(options?: {
   try {
     const res = await fetch(`/api/articles?${params.toString()}`, {
       signal: controller.signal,
+      // Search results must always reflect the current query and database.
+      // In particular, do not reuse cards fetched before a new deployment.
+      cache: "no-store",
     });
 
     if (!res.ok) {
