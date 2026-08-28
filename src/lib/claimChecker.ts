@@ -5,6 +5,8 @@
 import { formatAvailableAt } from "@/lib/useCapacityStatus";
 import type { Claim, ClaimCheckerSuccessResponse } from "@/types";
 
+const CLAIM_CHECK_TIMEOUT_MS = 45_000;
+
 export interface ClaimCheckResult {
   success: boolean;
   claim?: Claim;
@@ -12,11 +14,15 @@ export interface ClaimCheckResult {
 }
 
 export async function submitClaim(claimText: string): Promise<ClaimCheckResult> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), CLAIM_CHECK_TIMEOUT_MS);
+
   try {
     const res = await fetch("/api/claim-checker", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ claim: claimText }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -35,7 +41,15 @@ export async function submitClaim(claimText: string): Promise<ClaimCheckResult> 
 
     const data = (await res.json()) as ClaimCheckerSuccessResponse;
     return { success: true, claim: data.claim };
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return {
+        success: false,
+        error: "Claim check timed out. Please try again in a moment.",
+      };
+    }
     return { success: false, error: "Network error. Please try again." };
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
