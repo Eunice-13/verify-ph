@@ -125,7 +125,7 @@ export default function CategoryView({
         {!loading && !error && articles.length === 0 && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
             {search
-              ? "No verified stories match your search."
+              ? "No matching verified stories found."
               : "No verified stories available in this category yet."}
           </p>
         )}
