@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Check, Newspaper, type LucideIcon } from "lucide-react";
+import { X, Check, ClipboardCheck, type LucideIcon } from "lucide-react";
 
 type StatsPayload = {
-  claimsReported: number;
+  claimsChecked: number;
   claimsVerified: number;
-  sourcesTracked: number;
+  contradictedClaims: number;
 };
 
 type StatKey = keyof StatsPayload;
 
 const EMPTY_STATS: StatsPayload = {
-  claimsReported: 0,
+  claimsChecked: 0,
   claimsVerified: 0,
-  sourcesTracked: 0,
+  contradictedClaims: 0,
 };
 
 const POLL_INTERVAL_MS = 45_000;
@@ -109,9 +109,9 @@ export default function ClaimStats() {
   const hasLoadedRef = useRef(false);
   const latestStatsRef = useRef<StatsPayload>(EMPTY_STATS);
   const [pulseTokens, setPulseTokens] = useState<Record<StatKey, number>>({
-    claimsReported: 0,
+    claimsChecked: 0,
     claimsVerified: 0,
-    sourcesTracked: 0,
+    contradictedClaims: 0,
   });
 
   useEffect(() => {
@@ -162,14 +162,14 @@ export default function ClaimStats() {
       <hr className="border-t-2 border-neutral-800 mb-10" />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-6">
         <StatCard
-          borderClass="border-red-700"
-          iconBgClass="bg-red-600"
-          pulseClass="stat-pulse-red"
-          Icon={X}
-          count={stats.claimsReported}
-          label="Claims Reported"
+          borderClass="border-blue-700"
+          iconBgClass="bg-blue-600"
+          pulseClass="stat-pulse-blue"
+          Icon={ClipboardCheck}
+          count={stats.claimsChecked}
+          label="Claims Checked"
           duration={countDuration}
-          pulseToken={pulseTokens.claimsReported}
+          pulseToken={pulseTokens.claimsChecked}
         />
         <StatCard
           borderClass="border-emerald-800"
@@ -182,14 +182,14 @@ export default function ClaimStats() {
           pulseToken={pulseTokens.claimsVerified}
         />
         <StatCard
-          borderClass="border-blue-700"
-          iconBgClass="bg-blue-600"
-          pulseClass="stat-pulse-blue"
-          Icon={Newspaper}
-          count={stats.sourcesTracked}
-          label="Active News Sources Tracked"
+          borderClass="border-red-700"
+          iconBgClass="bg-red-600"
+          pulseClass="stat-pulse-red"
+          Icon={X}
+          count={stats.contradictedClaims}
+          label="Contradicted Claims"
           duration={countDuration}
-          pulseToken={pulseTokens.sourcesTracked}
+          pulseToken={pulseTokens.contradictedClaims}
         />
       </div>
     </section>
