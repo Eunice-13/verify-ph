@@ -46,18 +46,13 @@ function FloatingClaimBarContent() {
   // Neon variant when docked (near stats), default when floating
   const isNearStats = isDocked;
 
-  // IntersectionObserver: dock when the placeholder is fully in view,
-  // but ONLY on the homepage (where #claim-stats-section exists).
-  // On feed/search pages, always stay floating.
+  // IntersectionObserver: dock when the placeholder is fully in view.
+  // When docked, the bar sits in normal document flow above the footer.
+  // When the dock zone scrolls out of view, the bar floats fixed at the
+  // viewport bottom.
   useEffect(() => {
     const dockZone = dockRef.current;
     if (!dockZone) return;
-
-    const statsSection = document.getElementById("claim-stats-section");
-    if (!statsSection) {
-      setIsDocked(false);
-      return;
-    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
