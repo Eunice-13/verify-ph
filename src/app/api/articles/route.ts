@@ -19,6 +19,45 @@ const VALID_CATEGORIES: ArticleCategory[] = [
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+const SEARCH_CANDIDATE_LIMIT = 250;
+
+/**
+ * Normalise text before comparing it so a search such as "rene" can also
+ * match the same name when a publisher writes it with an accent. The final
+ * comparison still requires whole words, so it never treats "renewable" as
+ * a match for "rene".
+ */
+function normaliseSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase();
+}
+
+function getSearchTerms(search: string): string[] {
+  return Array.from(
+    new Set(normaliseSearchText(search).match(/[\p{L}\p{N}]+/gu) ?? []),
+  );
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Return true only when every searched term occurs as a complete word. */
+function articleContainsSearchTerms(article: DbArticle, terms: string[]): boolean {
+  const searchableText = normaliseSearchText(
+    `${article.title} ${article.summary ?? ""}`,
+  );
+
+  return terms.every((term) => {
+    const wholeWord = new RegExp(
+      `(?:^|[^\\p{L}\\p{N}])${escapeRegex(term)}(?=$|[^\\p{L}\\p{N}])`,
+      "u",
+    );
+    return wholeWord.test(searchableText);
+  });
+}
 
 /**
  * GET /api/articles
@@ -61,6 +100,77 @@ export async function GET(request: Request) {
 
   const supabase = createSupabaseServiceClient();
 
+  const search = searchParam?.trim();
+  if (search) {
+    const terms = getSearchTerms(search);
+
+    // A punctuation-only query has no searchable words. Treat it as an
+    // empty result instead of sending invalid full-text syntax to Supabase.
+    if (terms.length === 0) {
+      return NextResponse.json({
+        articles: [],
+        pagination: { total: 0, limit, offset },
+      });
+    }
+
+    // Full-text search keeps this request narrow in Supabase. We then apply
+    // the stricter whole-word check below: full-text search can stem words,
+    // which is useful for candidates but too loose for the results shown to
+    // a reader (for example, "rene" should not show "renewable").
+    const makeSearchQuery = (column: "title" | "summary") => {
+      let searchQuery = supabase
+        .from("articles")
+        .select(ARTICLE_COLUMNS)
+        .textSearch(column, search, { config: "english", type: "websearch" })
+        .order("published_at", { ascending: false })
+        .limit(SEARCH_CANDIDATE_LIMIT);
+
+      if (category) {
+        searchQuery = searchQuery.eq("category", category);
+      }
+
+      return searchQuery;
+    };
+
+    const [titleResult, summaryResult] = await Promise.all([
+      makeSearchQuery("title"),
+      makeSearchQuery("summary"),
+    ]);
+
+    if (titleResult.error || summaryResult.error) {
+      console.error("[api/articles] search query failed:", titleResult.error ?? summaryResult.error);
+      return NextResponse.json(
+        { error: "Failed to search articles." },
+        { status: 500 },
+      );
+    }
+
+    const uniqueArticles = new Map<string, DbArticle>();
+    for (const article of [...(titleResult.data ?? []), ...(summaryResult.data ?? [])] as DbArticle[]) {
+      uniqueArticles.set(article.id, article);
+    }
+
+    const matchedArticles = Array.from(uniqueArticles.values())
+      .filter((article) => articleContainsSearchTerms(article, terms))
+      .sort(
+        (left, right) =>
+          new Date(right.published_at).getTime() - new Date(left.published_at).getTime(),
+      );
+
+    const articles = featuredParam === "true"
+      ? matchedArticles.slice(0, 1)
+      : matchedArticles.slice(offset, offset + limit);
+
+    return NextResponse.json({
+      articles,
+      pagination: {
+        total: matchedArticles.length,
+        limit,
+        offset,
+      },
+    });
+  }
+
   let query = supabase
     .from("articles")
     .select(ARTICLE_COLUMNS, { count: "exact" })
@@ -68,13 +178,6 @@ export async function GET(request: Request) {
 
   if (category) {
     query = query.eq("category", category);
-  }
-
-  // Free-text keyword search across title and summary.
-  const search = searchParam?.trim();
-  if (search) {
-    const escaped = search.replace(/[%_,]/g, (m) => `\\${m}`);
-    query = query.or(`title.ilike.%${escaped}%,summary.ilike.%${escaped}%`);
   }
 
   if (featuredParam === "true") {
