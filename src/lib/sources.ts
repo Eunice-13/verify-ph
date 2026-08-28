@@ -1,8 +1,9 @@
 import type { TrustedRssSource, TrustedWebSource } from "@/types";
 
 // Keep the allowlist in code so the cron route never fetches a URL supplied by
-// a browser request. Categories are assigned per article in rss.ts, not per
-// outlet, so every UI tab can contain articles from multiple publishers.
+// a browser request. These are official publisher RSS URLs only. Categories
+// are assigned per article in rss.ts, not per outlet, so every UI tab can
+// contain articles from multiple publishers.
 // fallbackCategory is used only when NO signal (RSS <category>, URL path,
 // or title/summary keyword match — see mapCategory() in lib/rss.ts) points
 // to a specific category. "General" is retired as a real category (see
@@ -11,36 +12,147 @@ import type { TrustedRssSource, TrustedWebSource } from "@/types";
 // uncategorized story from a general newsroom is most often a straight
 // news piece rather than economy/health/lifestyle.
 export const TRUSTED_RSS_SOURCES: readonly TrustedRssSource[] = [
+  // GMA News publishes separate official feeds per section. A single broad
+  // News feed misses stories such as Money/Economy, so ingest each section.
   {
-    id: "gma-news",
+    id: "gma-news-politics",
     name: "GMA News",
     feedUrl: "https://data.gmanetwork.com/gno/rss/news/feed.xml",
     fallbackCategory: "News & Politics",
   },
   {
-    id: "inquirer",
+    id: "gma-economy",
+    name: "GMA News",
+    feedUrl: "https://data.gmanetwork.com/gno/rss/money/economy/feed.xml",
+    fallbackCategory: "Economy",
+  },
+  {
+    id: "gma-weather",
+    name: "GMA News",
+    feedUrl: "https://data.gmanetwork.com/gno/rss/weather/feed.xml",
+    fallbackCategory: "Health & Safety",
+  },
+  {
+    id: "gma-sports",
+    name: "GMA News",
+    feedUrl: "https://data.gmanetwork.com/gno/rss/sports/feed.xml",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "gma-lifestyle",
+    name: "GMA News",
+    feedUrl: "https://data.gmanetwork.com/gno/rss/lifestyle/feed.xml",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "gma-showbiz",
+    name: "GMA News",
+    feedUrl: "https://data.gmanetwork.com/gno/rss/showbiz/feed.xml",
+    fallbackCategory: "Lifestyle",
+  },
+
+  // Inquirer provides working feeds for each major editorial section.
+  {
+    id: "inquirer-news-politics",
     name: "Inquirer",
-    feedUrl: "https://www.inquirer.net/fullfeed",
+    feedUrl: "https://newsinfo.inquirer.net/feed",
     fallbackCategory: "News & Politics",
   },
+  {
+    id: "inquirer-economy",
+    name: "Inquirer",
+    feedUrl: "https://business.inquirer.net/feed",
+    fallbackCategory: "Economy",
+  },
+  {
+    id: "inquirer-lifestyle",
+    name: "Inquirer",
+    feedUrl: "https://lifestyle.inquirer.net/feed",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "inquirer-sports",
+    name: "Inquirer",
+    feedUrl: "https://sports.inquirer.net/feed",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "inquirer-entertainment",
+    name: "Inquirer",
+    feedUrl: "https://entertainment.inquirer.net/feed",
+    fallbackCategory: "Lifestyle",
+  },
+
+  // Rappler currently exposes one reliable official all-sections RSS feed.
+  // Its article-level category mapper distributes those stories across tabs.
   {
     id: "rappler",
     name: "Rappler",
     feedUrl: "https://www.rappler.com/rss/",
     fallbackCategory: "News & Politics",
   },
+
+  // Philstar's targeted feeds provide political, business and lifestyle
+  // coverage from one publisher without relying on a headline-only feed.
   {
-    id: "philstar",
+    id: "philstar-news-politics",
     name: "Philstar",
-    feedUrl: "https://www.philstar.com/rss/headlines",
+    feedUrl: "https://www.philstar.com/rss/nation",
     fallbackCategory: "News & Politics",
   },
   {
-    id: "manila-bulletin",
+    id: "philstar-economy",
+    name: "Philstar",
+    feedUrl: "https://www.philstar.com/rss/business",
+    fallbackCategory: "Economy",
+  },
+  {
+    id: "philstar-lifestyle",
+    name: "Philstar",
+    feedUrl: "https://www.philstar.com/rss/lifestyle",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "philstar-sports",
+    name: "Philstar",
+    feedUrl: "https://www.philstar.com/rss/sports",
+    fallbackCategory: "Lifestyle",
+  },
+
+  // Manila Bulletin offers reliable feeds for all of VerifyPH's real
+  // content categories, including the Health & Safety tab.
+  {
+    id: "manila-bulletin-news-politics",
     name: "Manila Bulletin",
-    feedUrl: "https://mb.com.ph/rss/articles",
+    feedUrl: "https://mb.com.ph/rss/national",
     fallbackCategory: "News & Politics",
   },
+  {
+    id: "manila-bulletin-economy",
+    name: "Manila Bulletin",
+    feedUrl: "https://mb.com.ph/rss/business",
+    fallbackCategory: "Economy",
+  },
+  {
+    id: "manila-bulletin-health-safety",
+    name: "Manila Bulletin",
+    feedUrl: "https://mb.com.ph/rss/health",
+    fallbackCategory: "Health & Safety",
+  },
+  {
+    id: "manila-bulletin-lifestyle",
+    name: "Manila Bulletin",
+    feedUrl: "https://mb.com.ph/rss/lifestyle",
+    fallbackCategory: "Lifestyle",
+  },
+  {
+    id: "manila-bulletin-sports",
+    name: "Manila Bulletin",
+    feedUrl: "https://mb.com.ph/rss/sports",
+    fallbackCategory: "Lifestyle",
+  },
+
+  // BusinessWorld focuses on business and economic reporting.
   {
     id: "businessworld",
     name: "BusinessWorld",
