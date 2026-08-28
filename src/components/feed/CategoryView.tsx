@@ -25,17 +25,34 @@ export default function CategoryView({
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const loadArticles = async () => {
+      setLoading(true);
+      setError(null);
 
-    fetchArticlesClient({ category, search, limit: 40 }).then((data) => {
-      if (!cancelled) {
-        setArticles(data);
-        setLoading(false);
+      try {
+        const data = await fetchArticlesClient({ category, search, limit: 40 });
+        if (!cancelled) {
+          setArticles(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setArticles([]);
+          setError(
+            error instanceof Error ? error.message : "Unable to load articles. Please try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    void loadArticles();
 
     return () => {
       cancelled = true;
@@ -47,8 +64,11 @@ export default function CategoryView({
 
   const minLargeSlots = 2;
   const minRestSlots = 4;
-  const largeSlotCount = loading ? minLargeSlots : Math.max(large.length, minLargeSlots);
-  const restSlotCount = loading ? minRestSlots : Math.max(rest.length, minRestSlots);
+  // Skeletons belong only to the in-flight state. Once a request finishes,
+  // render the actual number of articles (including zero) rather than
+  // leaving permanent fake loading cards on a no-results search.
+  const largeSlotCount = loading ? minLargeSlots : large.length;
+  const restSlotCount = loading ? minRestSlots : rest.length;
 
   const heading = search
     ? `Search Results for “${search}”${category ? ` — ${category}` : ""}`
@@ -97,7 +117,12 @@ export default function CategoryView({
             )
           )}
         </div>
-        {!loading && articles.length === 0 && (
+        {error && (
+          <p className="col-span-full text-center text-red-600 mt-6">
+            {error}
+          </p>
+        )}
+        {!loading && !error && articles.length === 0 && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
             {search
               ? "No verified stories match your search."
