@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { Check } from "lucide-react";
 import { Article } from "@/types";
-import { placeholderImage, placeholderProviderName, placeholderSourceUrl } from "@/lib/mockNews";
+import { placeholderProviderName, placeholderSourceUrl } from "@/lib/mockNews";
+import ArticleImage from "@/components/feed/ArticleImage";
 
 /**
  * Standard news card. Every card links straight out to the original news
@@ -27,16 +27,10 @@ export default function ArticleCard({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label={`Read ${article.title}`}
         className={`block rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)] ${imgHeightClass} relative`}
       >
-        <Image
-          src={article.imageUrl ?? placeholderImage(article.id)}
-          alt={article.title}
-          fill
-          loading="lazy"
-          unoptimized
-          className="object-cover transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
-        />
+        <ArticleImage imageUrl={article.imageUrl} title={article.title} />
       </a>
 
       <div className="pt-2.5">

@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { Article } from "@/types";
-import { placeholderImage, placeholderProviderName, placeholderSourceUrl } from "@/lib/mockNews";
+import { placeholderProviderName, placeholderSourceUrl } from "@/lib/mockNews";
+import ArticleImage from "@/components/feed/ArticleImage";
 
 /** Small side-list card used in the homepage hero's right-hand column (image + text side-by-side). */
 export default function ArticleSideCard({ article }: { article: Article }) {
@@ -21,16 +21,10 @@ export default function ArticleSideCard({ article }: { article: Article }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label={`Read ${article.title}`}
         className="relative block w-24 h-20 shrink-0 rounded-xl overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
       >
-        <Image
-          src={article.imageUrl ?? placeholderImage(article.id)}
-          alt={article.title}
-          fill
-          loading="lazy"
-          unoptimized
-          className="object-cover transition-transform duration-[400ms] ease-in-out group-hover:scale-105"
-        />
+        <ArticleImage imageUrl={article.imageUrl} title={article.title} />
         <div
           className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-end rounded-xl bg-gradient-to-t from-black/90 via-black/50 to-black/10 p-1.5
                  opacity-0 scale-[0.98] transition-all duration-[400ms] ease-in-out group-hover:opacity-100 group-hover:scale-100"

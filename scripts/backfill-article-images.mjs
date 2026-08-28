@@ -1,9 +1,7 @@
-// Backfill script: finds a real, headline-relevant photo (via the
-// Openverse API) for existing articles that don't have an image yet
-// (image_url IS NULL) — e.g. articles ingested before the RSS pipeline
-// started searching for fallback images automatically (see
-// findFallbackImageForHeadline() in src/lib/imageSearch.ts, now called
-// from src/lib/rss.ts for every newly-ingested article).
+// Backfill script: finds the original publisher image for existing articles
+// that don't have one yet (image_url IS NULL). It reads the article page's
+// Open Graph/Twitter metadata instead of searching stock photography, so a
+// card never receives a photo unrelated to its headline.
 //
 // RUN MANUALLY from the command line — not part of the app's runtime:
 //
@@ -16,15 +14,13 @@
 // Mirrors scripts/backfill-embeddings.mjs's structure/behavior:
 //   - Queries the actual remaining count dynamically each pass.
 //   - Small batches with limited concurrency + a delay between batches,
-//     to stay under Openverse's anonymous rate limit (20/min burst,
-//     200/day sustained).
+//     to stay respectful of publisher websites.
 //   - Per-article attempt count tracked in memory for this run only; a
 //     row that fails MAX_ATTEMPTS times is skipped for the rest of this
 //     run (not marked as permanently failed — eligible again next run).
-//   - A row where Openverse genuinely has no matching image is left with
-//     image_url NULL rather than writing a fake/placeholder URL into the
-//     database — the front-end's existing placeholderImage() fallback
-//     already covers that case at render time.
+//   - A row whose publisher exposes no usable image is left with image_url
+//     NULL. The front end shows an intentional image-unavailable state,
+//     never an unrelated stock photo.
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -42,67 +38,85 @@ const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const OPENVERSE_SEARCH_URL = "https://api.openverse.org/v1/images/";
 const BATCH_SIZE = 15;
-const CONCURRENCY = 3; // matches MAX_CONCURRENT_SEARCHES in lib/imageSearch.ts
-const DELAY_BETWEEN_BATCHES_MS = 3000; // conservative: stays well under 20 req/min even at full concurrency
+const CONCURRENCY = 3;
+const DELAY_BETWEEN_BATCHES_MS = 3000;
 const MAX_ATTEMPTS_PER_ARTICLE = 2;
-const REQUEST_TIMEOUT_MS = 8000;
+const PUBLISHER_IMAGE_REQUEST_TIMEOUT_MS = 10_000;
+const MAX_PUBLISHER_PAGE_BYTES = 1_500_000;
+const IMAGE_META_NAMES = new Set([
+  "og:image",
+  "og:image:url",
+  "twitter:image",
+  "twitter:image:src",
+]);
 
-// Duplicated from lib/imageSearch.ts (plain Node script, no TS/path-alias
-// resolution) — MUST stay in sync with that file's query-building logic.
-function cleanQuery(raw) {
-  return raw
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 10)
-    .join(" ");
+function toHttpUrl(value, baseUrl) {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value.trim(), baseUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
-async function searchOpenverse(query) {
-  const cleaned = cleanQuery(query);
-  if (!cleaned) return null;
+function metaAttribute(tag, name) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = tag.match(
+    new RegExp(`\\b${escapedName}\\s*=\\s*(?:["']([^"']*)["']|([^\\s>]+))`, "i")
+  );
+  return match?.[1] ?? match?.[2] ?? null;
+}
 
-  const url = `${OPENVERSE_SEARCH_URL}?${new URLSearchParams({
-    q: cleaned,
-    license: "cc0,pdm",
-    category: "photograph",
-    mature: "false",
-    page_size: "1",
-  })}`;
+function publisherImageUrlFromHtml(html, pageUrl) {
+  const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
 
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: { "User-Agent": "VerifyPH-ImageBackfill/1.0 (https://verify-ph.vercel.app)" },
-  });
+  for (const tag of metaTags) {
+    const metaName = metaAttribute(tag, "property") ?? metaAttribute(tag, "name");
+    if (!metaName || !IMAGE_META_NAMES.has(metaName.toLowerCase())) continue;
 
-  if (!response.ok) {
-    throw new Error(`Openverse HTTP ${response.status}`);
+    const imageUrl = toHttpUrl(metaAttribute(tag, "content"), pageUrl);
+    if (imageUrl) return imageUrl;
   }
 
-  const data = await response.json();
-  const first = data.results?.[0];
-  return first?.thumbnail ?? first?.url ?? null;
+  return null;
+}
+
+async function findPublisherImageUrl(articleUrl) {
+  const safeArticleUrl = toHttpUrl(articleUrl);
+  if (!safeArticleUrl) return null;
+
+  const response = await fetch(safeArticleUrl, {
+    signal: AbortSignal.timeout(PUBLISHER_IMAGE_REQUEST_TIMEOUT_MS),
+    headers: {
+      "User-Agent": "VerifyPH Image Backfill/1.0 (https://verify-ph.vercel.app)",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && !/(?:text\/html|application\/xhtml\+xml)/i.test(contentType)) return null;
+
+  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_PUBLISHER_PAGE_BYTES) return null;
+
+  return publisherImageUrlFromHtml(await response.text(), response.url);
 }
 
 async function findImageForArticle(article) {
-  const primary = await searchOpenverse(article.title);
-  if (primary) return primary;
-
-  if (article.category) {
-    const broadened = await searchOpenverse(`${article.category} Philippines news`);
-    if (broadened) return broadened;
-  }
-
-  return null; // Openverse genuinely has nothing relevant — leave NULL.
+  return findPublisherImageUrl(article.source_url);
 }
 
 async function fetchNullImageBatch(excludeIds) {
   let query = db
     .from("articles")
-    .select("id, title, category")
+    .select("id, title, source_url")
     .is("image_url", null)
     .limit(BATCH_SIZE);
 
@@ -146,7 +160,7 @@ async function main() {
   const exhaustedIds = new Set();
 
   let found = 0;
-  let noMatch = 0; // Openverse ran successfully but had nothing relevant
+  let noMatch = 0; // Publisher page had no readable image metadata
   let failedThisRun = 0;
   let skippedExhausted = 0;
 
@@ -169,9 +183,9 @@ async function main() {
 
         if (!imageUrl) {
           console.log(`[no-match] ${article.id}: ${article.title.slice(0, 60)}`);
-          // Not an error — Openverse just has nothing relevant. Don't
-          // retry this article again this run (retrying won't change the
-          // outcome), but don't treat it as a failure either.
+          // Not an error — the publisher has no readable image metadata.
+          // Don't retry this article again this run, but leave it eligible
+          // for a future run in case the publisher adds an image later.
           exhaustedIds.add(article.id);
           return { id: article.id, outcome: "no-match" };
         }
@@ -216,13 +230,13 @@ async function main() {
   console.log("\n=== Article image backfill report ===");
   console.log(`Selected this run:        ${totalSelectedIds.size}`);
   console.log(`Image found & saved:      ${found}`);
-  console.log(`No relevant image found (left NULL): ${noMatch}`);
+  console.log(`No publisher image found (left NULL): ${noMatch}`);
   console.log(`Skipped (attempts exhausted, ${MAX_ATTEMPTS_PER_ARTICLE} tries): ${skippedExhausted}`);
   console.log(`Failed (mid-retry, will retry next loop pass): ${failedThisRun}`);
   console.log(`Still remaining (image_url IS NULL, overall): ${stillRemaining}`);
   console.log("======================================");
   console.log(
-    "\nNote: rows left NULL after this script (either 'no-match' or exhausted) still render fine — ArticleCard/ArticleSideCard fall back to a generic seeded placeholder image at render time."
+    "\nNote: rows left NULL after this script render an intentional image-unavailable state rather than an unrelated stock photo."
   );
 }
 
