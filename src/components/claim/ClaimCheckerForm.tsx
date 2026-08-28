@@ -27,7 +27,6 @@ export default function ClaimCheckerForm() {
     setLoading(true);
     setError(null);
     setClaim(null);
-    setValue("");
     requestAnimationFrame(resize);
 
     const result = await submitClaim(text);
@@ -36,6 +35,8 @@ export default function ClaimCheckerForm() {
 
     if (result.success && result.claim) {
       setClaim(result.claim);
+      setValue("");
+      requestAnimationFrame(resize);
     } else {
       setError(result.error ?? "Something went wrong.");
     }

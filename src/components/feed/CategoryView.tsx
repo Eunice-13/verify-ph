@@ -6,7 +6,6 @@ import { Home } from "lucide-react";
 import { Article, RealCategory } from "@/types";
 import { fetchArticlesClient } from "@/lib/articles";
 import ArticleCard from "@/components/feed/ArticleCard";
-import EmptyCardSkeleton from "@/components/feed/EmptyCardSkeleton";
 
 /**
  * Category page view. Fetches articles client-side via /api/articles with
@@ -63,8 +62,12 @@ export default function CategoryView({
   const large = articles.slice(0, 2);
   const rest = articles.slice(2);
 
+  // Slot counts reflect the actual number of results — no fake skeleton
+  // placeholders when there are zero matches; the empty state is shown as
+  // an explicit "no results" message instead of a padded grid.
   const largeSlotCount = large.length;
   const restSlotCount = rest.length;
+  const hasNoResults = !loading && !error && articles.length === 0;
 
   const heading = search
     ? `Search Results for "${search}"${category ? ` \u2014 ${category}` : ""}`
@@ -72,7 +75,9 @@ export default function CategoryView({
 
   return (
     <>
-      <section className="max-w-6xl mx-auto px-6 py-10">
+      <section
+        className={`max-w-6xl mx-auto px-6 py-10 ${hasNoResults ? "min-h-[60vh]" : ""}`}
+      >
         <div className="flex items-baseline justify-between border-b-2 border-neutral-800 pb-2 mb-8">
           <h1 className="font-serif font-bold text-2xl md:text-3xl text-neutral-900">
             {heading}
@@ -85,40 +90,36 @@ export default function CategoryView({
             <Home className="w-4 h-4" strokeWidth={2} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {Array.from({ length: largeSlotCount }, (_, i) =>
-            large[i] ? (
+        {largeSlotCount > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {Array.from({ length: largeSlotCount }, (_, i) => (
               <ArticleCard
                 key={large[i].id}
                 article={large[i]}
                 imgHeightClass="h-64 md:h-80"
                 titleSizeClass="text-lg md:text-xl"
               />
-            ) : (
-              <EmptyCardSkeleton key={`large-empty-${i}`} heightClass="h-64 md:h-80" />
-            )
-          )}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-          {Array.from({ length: restSlotCount }, (_, i) =>
-            rest[i] ? (
+            ))}
+          </div>
+        )}
+        {restSlotCount > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
+            {Array.from({ length: restSlotCount }, (_, i) => (
               <ArticleCard
                 key={rest[i].id}
                 article={rest[i]}
                 imgHeightClass="h-40 md:h-44"
                 titleSizeClass="text-sm md:text-base"
               />
-            ) : (
-              <EmptyCardSkeleton key={`rest-empty-${i}`} heightClass="h-40 md:h-44" />
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        )}
         {error && (
           <p className="col-span-full text-center text-red-600 mt-6">
             {error}
           </p>
         )}
-        {!loading && !error && articles.length === 0 && (
+        {hasNoResults && (
           <p className="col-span-full text-center text-neutral-500 mt-6">
             {search
               ? "No matching verified stories found."
