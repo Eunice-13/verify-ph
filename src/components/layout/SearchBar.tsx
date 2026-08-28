@@ -38,7 +38,7 @@ export default function SearchBar() {
     <form
       onSubmit={handleSubmit}
       role="search"
-      className="flex items-center gap-2 h-10 px-4 rounded-full bg-[#f4f1ea] w-40 sm:w-56 md:w-72 transition-[width] focus-within:w-72 md:focus-within:w-96"
+      className="flex items-center gap-2 h-10 px-4 rounded-full bg-[#f4f1ea] w-28 sm:w-56 md:w-72 transition-[width] focus-within:w-40 sm:focus-within:w-72 md:focus-within:w-96 min-w-0"
     >
       <Search className="w-4 h-4 text-neutral-900 shrink-0" strokeWidth={2} aria-hidden="true" />
       <input

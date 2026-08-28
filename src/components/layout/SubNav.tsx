@@ -22,7 +22,7 @@ export default function SubNav() {
 
   return (
     <nav className="sticky top-16 z-30 bg-[#e3dfd7]">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between overflow-x-auto">
+      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-6 sm:gap-0 sm:justify-between overflow-x-auto">
         {CATEGORIES.map((category) => {
           const isActive = category === activeCategory;
           return (
@@ -30,7 +30,7 @@ export default function SubNav() {
               key={category}
               href={`/feed?category=${encodeURIComponent(category)}`}
               aria-current={isActive ? "page" : undefined}
-              className={`cursor-pointer font-serif font-bold text-sm md:text-base whitespace-nowrap hover:text-emerald-900 h-full flex items-center border-b-2 transition-colors ${
+              className={`cursor-pointer shrink-0 font-serif font-bold text-sm md:text-base whitespace-nowrap hover:text-emerald-900 h-full flex items-center border-b-2 transition-colors ${
                 isActive
                   ? "text-emerald-900 border-emerald-700"
                   : "text-neutral-800 border-transparent"
