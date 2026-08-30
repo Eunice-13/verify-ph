@@ -201,7 +201,7 @@ Embedding or image extraction failures do not discard the news article. The row 
 
 ### RSS ingestion publishers
 
-VerifyPH currently reads **22 official section feeds** across six Philippine publishers:
+VerifyPH currently reads **24 official section feeds** across seven Philippine publishers:
 
 - GMA News
 - Philippine Daily Inquirer
@@ -209,6 +209,7 @@ VerifyPH currently reads **22 official section feeds** across six Philippine pub
 - Philstar
 - Manila Bulletin
 - BusinessWorld
+- VERA Files
 
 The source allowlist is stored in [`src/lib/sources.ts`](src/lib/sources.ts). Categories are assigned per article rather than permanently tying an entire publisher to one topic.
 

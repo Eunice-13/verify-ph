@@ -159,6 +159,22 @@ export const TRUSTED_RSS_SOURCES: readonly TrustedRssSource[] = [
     feedUrl: "https://www.bworldonline.com/feed/",
     fallbackCategory: "Economy",
   },
+
+  // VERA Files publishes separate official feeds for its general reporting
+  // and fact-checking desks. Keeping both ensures its fact checks are not
+  // missed when they do not appear in the broader News archive.
+  {
+    id: "vera-files-news",
+    name: "VERA Files",
+    feedUrl: "https://verafiles.org/section/news/feed/",
+    fallbackCategory: "News & Politics",
+  },
+  {
+    id: "vera-files-fact-check",
+    name: "VERA Files",
+    feedUrl: "https://verafiles.org/section/fact-check/feed/",
+    fallbackCategory: "News & Politics",
+  },
 ];
 
 // Trusted Philippine news outlets the AI is allowed to search the live web
@@ -176,6 +192,7 @@ export const TRUSTED_WEB_SOURCES: readonly TrustedWebSource[] = [
   { name: "Philippine Star", domain: "philstar.com" },
   { name: "Manila Bulletin", domain: "mb.com.ph" },
   { name: "BusinessWorld", domain: "bworldonline.com" },
+  { name: "VERA Files", domain: "verafiles.org" },
   // Additional reputable, editorially independent PH outlets not yet
   // ingested via RSS, but reliable enough to accept as live evidence.
   { name: "ABS-CBN News", domain: "abs-cbn.com" },
